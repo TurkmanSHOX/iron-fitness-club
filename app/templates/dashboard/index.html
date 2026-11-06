@@ -159,7 +159,9 @@
                 <span class="badge bg-light text-dark">Real-vaqt dinamikasi</span>
             </div>
             <div class="card-body">
-                <canvas id="revenueChart" height="260"></canvas>
+                <div id="revenueChartContainer" style="position: relative; height: 280px; width: 100%;">
+                    <canvas id="revenueChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -167,11 +169,20 @@
     <!-- Tariflar Taqsimoti -->
     <div class="col-lg-4">
         <div class="card h-100">
-            <div class="card-header bg-white">
+            <div class="card-header bg-white d-flex align-items-center justify-content-between">
                 <span class="fw-bold"><i class="fa-solid fa-chart-pie me-2 text-success"></i> Tariflar bo'yicha taqsimot</span>
+                <span id="activeSubsTotalBadge" class="badge bg-success-subtle text-success">0 ta faol</span>
             </div>
-            <div class="card-body d-flex align-items-center justify-content-center">
-                <canvas id="tariffChart" height="240"></canvas>
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div id="tariffEmptyState" class="text-center py-4 my-auto" style="display: none;">
+                    <i class="fa-solid fa-chart-pie fa-3x text-muted opacity-50 mb-3"></i>
+                    <h6 class="fw-bold text-secondary mb-1">Hozircha ma’lumot mavjud emas</h6>
+                    <p class="text-muted small mb-0">Sport zalda hali faol abonementlar mavjud emas.</p>
+                </div>
+                <div id="tariffChartContainer" style="position: relative; height: 180px; width: 100%;">
+                    <canvas id="tariffChart"></canvas>
+                </div>
+                <div id="tariffDetailsList" class="mt-2 w-100 small"></div>
             </div>
         </div>
     </div>
@@ -259,77 +270,227 @@
 
 {% block scripts %}
 <script>
-    // Dashboard grafiklarini yuklash
-    fetch("{{ url_for('dashboard.charts_api') }}")
-        .then(response => response.json())
-        .then(data => {
-            // 1. Daromad va tashriflar grafigi
-            const ctxRev = document.getElementById('revenueChart').getContext('2d');
-            new Chart(ctxRev, {
-                type: 'bar',
-                data: {
-                    labels: data.days_labels,
-                    datasets: [
-                        {
-                            label: "Tushum (so'm)",
-                            data: data.revenue_data,
-                            backgroundColor: '#255F38',
-                            borderRadius: 6,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: 'Tashriflar soni',
-                            data: data.visits_data,
-                            type: 'line',
-                            borderColor: '#99BC85',
-                            backgroundColor: '#99BC85',
-                            borderWidth: 3,
-                            fill: false,
-                            yAxisID: 'y1'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            ticks: {
-                                callback: val => val.toLocaleString() + " so'm"
-                            }
-                        },
-                        y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            grid: { drawOnChartArea: false }
-                        }
-                    }
-                }
-            });
+    let revenueChartInstance = null;
+    let tariffChartInstance = null;
 
-            // 2. Tariflar taqsimoti
-            const ctxTariff = document.getElementById('tariffChart').getContext('2d');
-            new Chart(ctxTariff, {
-                type: 'doughnut',
-                data: {
-                    labels: data.tariff_labels,
-                    datasets: [{
-                        data: data.tariff_counts,
-                        backgroundColor: ['#255F38', '#99BC85', '#28a745', '#17a2b8', '#ffc107', '#fd7e14']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom' }
+    function loadDashboardCharts() {
+        fetch("{{ url_for('dashboard.charts_api') }}")
+            .then(response => {
+                if (!response.ok) throw new Error("API status xatosi: " + response.status);
+                return response.json();
+            })
+            .then(data => {
+                // 1. SO'NGGI 7 KUNLIK TUSHUM VA TASHRIFLAR GRAFIKASI
+                const canvasRev = document.getElementById('revenueChart');
+                if (canvasRev) {
+                    if (revenueChartInstance) {
+                        revenueChartInstance.destroy();
+                    }
+                    const ctxRev = canvasRev.getContext('2d');
+                    revenueChartInstance = new Chart(ctxRev, {
+                        type: 'bar',
+                        data: {
+                            labels: data.days_labels,
+                            datasets: [
+                                {
+                                    label: "Tushum (so'm)",
+                                    data: data.revenue_data,
+                                    backgroundColor: '#255F38',
+                                    hoverBackgroundColor: '#1E4620',
+                                    borderRadius: 6,
+                                    yAxisID: 'y',
+                                    order: 2
+                                },
+                                {
+                                    label: "Tashriflar soni",
+                                    data: data.visits_data,
+                                    type: 'line',
+                                    borderColor: '#99BC85',
+                                    backgroundColor: '#99BC85',
+                                    pointBackgroundColor: '#255F38',
+                                    pointBorderColor: '#FFFFFF',
+                                    pointRadius: 5,
+                                    pointHoverRadius: 7,
+                                    borderWidth: 3,
+                                    tension: 0.3,
+                                    fill: false,
+                                    yAxisID: 'y1',
+                                    order: 1
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false
+                            },
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                    labels: {
+                                        usePointStyle: true,
+                                        font: { size: 12 }
+                                    }
+                                },
+                                tooltip: {
+                                    backgroundColor: 'rgba(37, 95, 56, 0.95)',
+                                    padding: 10,
+                                    cornerRadius: 8,
+                                    callbacks: {
+                                        label: function(context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) label += ': ';
+                                            if (context.dataset.yAxisID === 'y') {
+                                                label += Number(context.raw || 0).toLocaleString('uz-UZ') + " so'm";
+                                            } else {
+                                                label += Number(context.raw || 0) + " ta tashrif";
+                                            }
+                                            return label;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: { display: false }
+                                },
+                                y: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'left',
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: "Tushum (so'm)",
+                                        color: '#255F38',
+                                        font: { weight: 'bold' }
+                                    },
+                                    ticks: {
+                                        callback: function(val) {
+                                            if (val >= 1000000) return (val / 1000000).toFixed(1) + " mln";
+                                            if (val >= 1000) return (val / 1000).toFixed(0) + " ming";
+                                            return val;
+                                        }
+                                    }
+                                },
+                                y1: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'right',
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: "Tashriflar",
+                                        color: '#99BC85',
+                                        font: { weight: 'bold' }
+                                    },
+                                    grid: { drawOnChartArea: false },
+                                    ticks: {
+                                        precision: 0,
+                                        stepSize: 1
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // 2. TARIFLAR BO'YICHA TAQSIMOT
+                const emptyEl = document.getElementById('tariffEmptyState');
+                const containerEl = document.getElementById('tariffChartContainer');
+                const detailsEl = document.getElementById('tariffDetailsList');
+                const badgeEl = document.getElementById('activeSubsTotalBadge');
+
+                if (badgeEl) {
+                    badgeEl.innerText = (data.total_active_subs || 0) + " ta faol";
+                }
+
+                if (!data.has_active_tariffs || data.total_active_subs === 0) {
+                    if (emptyEl) emptyEl.style.display = 'block';
+                    if (containerEl) containerEl.style.display = 'none';
+                    if (detailsEl) detailsEl.innerHTML = '';
+                } else {
+                    if (emptyEl) emptyEl.style.display = 'none';
+                    if (containerEl) containerEl.style.display = 'block';
+
+                    const canvasTariff = document.getElementById('tariffChart');
+                    if (canvasTariff) {
+                        if (tariffChartInstance) {
+                            tariffChartInstance.destroy();
+                        }
+                        const ctxTariff = canvasTariff.getContext('2d');
+                        tariffChartInstance = new Chart(ctxTariff, {
+                            type: 'doughnut',
+                            data: {
+                                labels: data.tariff_labels,
+                                datasets: [{
+                                    data: data.tariff_counts,
+                                    backgroundColor: (data.tariff_details || []).map(d => d.color),
+                                    borderWidth: 2,
+                                    borderColor: '#ffffff',
+                                    hoverOffset: 6
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        backgroundColor: 'rgba(33, 37, 41, 0.95)',
+                                        padding: 10,
+                                        cornerRadius: 8,
+                                        callbacks: {
+                                            label: function(ctx) {
+                                                const idx = ctx.dataIndex;
+                                                const item = (data.tariff_details || [])[idx];
+                                                if (item) {
+                                                    return `${item.name}: ${item.count} ta (${item.percentage}%)`;
+                                                }
+                                                return `${ctx.label}: ${ctx.raw}`;
+                                            }
+                                        }
+                                    }
+                                },
+                                cutout: '65%'
+                            }
+                        });
+                    }
+
+                    // Diagramma yonidagi/ostidagi tarif nomlari va foizlari ro'yxati
+                    if (detailsEl && data.tariff_details) {
+                        let listHtml = '<div class="d-flex flex-column gap-1 mt-2">';
+                        data.tariff_details.forEach(item => {
+                            listHtml += `
+                                <div class="d-flex align-items-center justify-content-between p-2 rounded bg-light border-start border-3" style="border-color: ${item.color} !important;">
+                                    <div class="d-flex align-items-center text-truncate me-2">
+                                        <span class="d-inline-block rounded-circle me-2 flex-shrink-0" style="width: 10px; height: 10px; background-color: ${item.color};"></span>
+                                        <span class="fw-semibold text-truncate" title="${item.name}">${item.name}</span>
+                                        <span class="text-muted ms-1 small">(${item.formatted_price})</span>
+                                    </div>
+                                    <div class="text-end flex-shrink-0">
+                                        <span class="fw-bold">${item.count} ta</span>
+                                        <span class="badge bg-secondary-subtle text-dark ms-1">${item.percentage}%</span>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        listHtml += '</div>';
+                        detailsEl.innerHTML = listHtml;
                     }
                 }
+            })
+            .catch(err => {
+                console.error("Dashboard grafiklarini yuklashda xatolik:", err);
+                const cardRev = document.getElementById('revenueChartContainer');
+                if (cardRev) {
+                    cardRev.innerHTML = '<div class="alert alert-warning my-4">Grafik ma\'lumotlarini yuklashda xatolik yuz berdi. Iltimos, sahifani qayta yangilang.</div>';
+                }
             });
-        });
+    }
+
+    document.addEventListener('DOMContentLoaded', loadDashboardCharts);
 </script>
 {% endblock %}

@@ -115,6 +115,11 @@ def charts_api():
     """Chart.js uchun real dinamik ma'lumotlar"""
     today = date.today()
 
+    UZ_MONTHS = {
+        1: 'Yan', 2: 'Fev', 3: 'Mar', 4: 'Apr', 5: 'May', 6: 'Iyn',
+        7: 'Iyl', 8: 'Avg', 9: 'Sen', 10: 'Okt', 11: 'Noy', 12: 'Dek'
+    }
+
     # 1. So'nggi 7 kunlik daromad va tashriflar
     days_labels = []
     revenue_data = []
@@ -122,32 +127,71 @@ def charts_api():
 
     for i in range(6, -1, -1):
         target_day = today - timedelta(days=i)
-        days_labels.append(target_day.strftime('%d-%b'))
+        day_label = f"{target_day.day:02d}-{UZ_MONTHS.get(target_day.month, '')}"
+        days_labels.append(day_label)
 
-        # Shu kungi tushum
+        day_start = datetime.combine(target_day, datetime.min.time())
+        day_end = datetime.combine(target_day, datetime.max.time())
+
+        # Shu kungi tushum: faqat 'completed' to'lovlar, bekor qilingan ('cancelled', 'refunded') mutlaqo qo'shilmaydi
         pay_sum = db.session.query(func.coalesce(func.sum(Payment.amount), 0)).filter(
-            func.date(Payment.created_at) == target_day,
+            Payment.created_at >= day_start,
+            Payment.created_at <= day_end,
             Payment.status == 'completed'
         ).scalar() or 0.0
         revenue_data.append(float(pay_sum))
 
-        # Shu kungi tashriflar
-        v_count = Visit.query.filter_by(visit_date=target_day, status='allowed').count()
-        visits_data.append(v_count)
+        # Shu kungi tashriflar: faqat muvaffaqiyatli 'allowed' tashriflar
+        v_count = Visit.query.filter(
+            Visit.visit_date == target_day,
+            Visit.status == 'allowed'
+        ).count()
+        visits_data.append(int(v_count))
 
-    # 2. Tariflar bo'yicha sotuv taqsimoti
-    tariffs = Tariff.query.filter_by(is_active=True).all()
+    # 2. Tariflar bo'yicha faol abonementlar taqsimoti
+    # Barcha 4 ta asosiy tarif: 1 kunlik (20 000), 1 oylik juft (300 000), 1 oylik toq (300 000), 1 oylik har kunlik (400 000)
+    tariffs = Tariff.query.order_by(Tariff.id.asc()).all()
     tariff_labels = []
     tariff_counts = []
+    tariff_percentages = []
+    tariff_details = []
+
+    total_active_subs = 0
+    raw_counts = []
     for t in tariffs:
-        cnt = Subscription.query.filter_by(tariff_id=t.id).count()
+        # Faqat ayni paytda faol bo'lgan abonementlar hisoblanadi (muddati tugagan va bekor qilinganlar qo'shilmaydi)
+        cnt = Subscription.query.filter(
+            Subscription.tariff_id == t.id,
+            Subscription.status == 'active'
+        ).count()
+        raw_counts.append((t, cnt))
+        total_active_subs += cnt
+
+    palette = ['#255F38', '#99BC85', '#2E7D32', '#66BB6A', '#1E4620', '#81C784']
+    for idx, (t, cnt) in enumerate(raw_counts):
+        pct = round((cnt / total_active_subs * 100), 1) if total_active_subs > 0 else 0.0
         tariff_labels.append(t.name)
         tariff_counts.append(cnt)
+        tariff_percentages.append(pct)
+        tariff_details.append({
+            'id': t.id,
+            'name': t.name,
+            'type': t.type,
+            'price': float(t.price),
+            'formatted_price': f"{int(t.price):,} so'm".replace(',', ' '),
+            'count': cnt,
+            'percentage': pct,
+            'color': palette[idx % len(palette)]
+        })
 
     return jsonify({
         'days_labels': days_labels,
         'revenue_data': revenue_data,
         'visits_data': visits_data,
         'tariff_labels': tariff_labels,
-        'tariff_counts': tariff_counts
+        'tariff_counts': tariff_counts,
+        'tariff_percentages': tariff_percentages,
+        'tariff_details': tariff_details,
+        'total_active_subs': total_active_subs,
+        'has_active_tariffs': (total_active_subs > 0)
     })
