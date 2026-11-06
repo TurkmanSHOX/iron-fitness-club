@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}2D Skaner (Kirish Nazorati){% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1" style="color: #255F38;"><i class="fa-solid fa-qrcode me-2"></i> 2D Skaner (Reception Kirish Nazorati)</h4>
+        <p class="text-muted small mb-0">Mijoz QR-kodini 2D skanerga ko'rsating yoki kodni kiriting</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('visits.manual_checkin') }}" class="btn btn-outline-warning btn-sm">
+            <i class="fa-solid fa-user-check me-1"></i> Qo'lda kirish (Istisno)
+        </a>
+        <a href="{{ url_for('visits.history') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-list me-1"></i> Tashriflar jurnali
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- SKANER VA NATIJA HUDUDI -->
+    <div class="col-lg-7">
+        <!-- SKANER INPUT KARTASI -->
+        <div class="card shadow-sm mb-4 border-2 border-success">
+            <div class="card-body p-4 text-center">
+                <div class="mb-3">
+                    <span class="badge bg-success-subtle text-success px-3 py-2 fs-6 rounded-pill">
+                        <i class="fa-solid fa-wifi me-2 animate-pulse"></i> 2D Skaner faol holatda
+                    </span>
+                </div>
+
+                <div class="form-group mb-3">
+                    <input type="text" id="scannerInput" class="form-control form-control-lg text-center fw-bold fs-4" 
+                           placeholder="Skaner kutilyapti... (masalan: IFC-A1B2C3D4)" autofocus autocomplete="off">
+                </div>
+
+                <p class="text-muted small mb-0">
+                    <i class="fa-solid fa-circle-info me-1"></i> Skaner QR-kodni o'qigan zahoti avtomatik tekshiradi. Klaviatura orqali ham kiritib <b>Enter</b> bosishingiz mumkin.
+                </p>
+            </div>
+        </div>
+
+        <!-- NATIJA KARTASI (Dinamik yangilanadi) -->
+        <div id="resultCard" class="card shadow" style="display: none;">
+            <div id="resultHeader" class="card-header text-white fs-5 fw-bold d-flex align-items-center justify-content-between">
+                <span id="resultStatusText">KIRISHGA RUXSAT BERILDI</span>
+                <span id="resultTime" class="badge bg-light text-dark"></span>
+            </div>
+            <div class="card-body p-4">
+                <div class="row align-items-center">
+                    <div class="col-md-4 text-center mb-3 mb-md-0">
+                        <img id="clientPhoto" src="https://via.placeholder.com/150" class="rounded-circle border shadow-sm" style="width: 120px; height: 120px; object-fit: cover;" alt="Mijoz">
+                    </div>
+                    <div class="col-md-8">
+                        <h4 id="clientName" class="fw-bold mb-1"></h4>
+                        <p id="clientPhone" class="text-muted mb-2"></p>
+                        
+                        <div class="p-3 rounded bg-light mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted small">Tarif:</span>
+                                <b id="tariffName" class="text-dark"></b>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted small">Abonement muddati:</span>
+                                <span id="subDates" class="small"></span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted small">Qolgan kunlar:</span>
+                                <b id="daysLeft" class="text-success"></b>
+                            </div>
+                        </div>
+
+                        <div id="reasonAlert" class="alert alert-danger mb-0 small" style="display: none;">
+                            <b>Rad etish sababi:</b> <span id="reasonText"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Istisno ruxsati bo'limi (Agar rad etilgan bo'lsa ochiladi) -->
+                <div id="overrideSection" class="mt-3 pt-3 border-top" style="display: none;">
+                    <div class="input-group">
+                        <input type="text" id="overrideReasonInput" class="form-control" placeholder="Istisno sababini kiriting (masalan: Bugun ruxsat berildi)">
+                        <button class="btn btn-warning fw-bold" id="overrideBtn">
+                            <i class="fa-solid fa-key me-1"></i> Istisno tariqasida kiritish
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BUGUNGI TASHRIFLAR JURNALI (O'NG TOMON) -->
+    <div class="col-lg-5">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-white d-flex align-items-center justify-content-between">
+                <span class="fw-bold"><i class="fa-solid fa-clock-rotate-left me-2 text-success"></i> Bugungi tashriflar</span>
+                <span class="badge bg-success">{{ today_allowed_count }} ruxsat</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0" id="todayVisitsTable">
+                        <thead class="sticky-top bg-light">
+                            <tr>
+                                <th>Vaqt</th>
+                                <th>Mijoz</th>
+                                <th>Holat</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for v in today_visits %}
+                            <tr>
+                                <td><small class="fw-bold">{{ v.formatted_time }}</small></td>
+                                <td>
+                                    <div><b>{{ v.client.full_name }}</b></div>
+                                    <small class="text-muted">{{ v.subscription.tariff.name if v.subscription else '-' }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge {% if v.status == 'allowed' %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ 'Ruxsat' if v.status == 'allowed' else 'Rad' }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr id="emptyRow"><td colspan="3" class="text-center py-4 text-muted">Bugun hali kirishlar qayd etilmadi</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const input = document.getElementById('scannerInput');
+    const resultCard = document.getElementById('resultCard');
+    const resultHeader = document.getElementById('resultHeader');
+    const resultStatusText = document.getElementById('resultStatusText');
+    const resultTime = document.getElementById('resultTime');
+    const clientPhoto = document.getElementById('clientPhoto');
+    const clientName = document.getElementById('clientName');
+    const clientPhone = document.getElementById('clientPhone');
+    const tariffName = document.getElementById('tariffName');
+    const subDates = document.getElementById('subDates');
+    const daysLeft = document.getElementById('daysLeft');
+    const reasonAlert = document.getElementById('reasonAlert');
+    const reasonText = document.getElementById('reasonText');
+    const overrideSection = document.getElementById('overrideSection');
+    const overrideBtn = document.getElementById('overrideBtn');
+    const overrideReasonInput = document.getElementById('overrideReasonInput');
+    const visitsTable = document.getElementById('todayVisitsTable').querySelector('tbody');
+
+    let lastScannedCode = '';
+
+    // Skaner maydonini doimiy fokusda saqlash
+    function keepFocus() {
+        if (document.activeElement !== overrideReasonInput) {
+            input.focus();
+        }
+    }
+    document.addEventListener('click', keepFocus);
+    setInterval(keepFocus, 3000);
+
+    // Audio signallar (Web Audio API)
+    function playBeep(type) {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            if (type === 'success') {
+                osc.frequency.setValueAtTime(800, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.2);
+            } else {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, ctx.currentTime);
+                gain.gain.setValueAtTime(0.4, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.35);
+            }
+        } catch(e) {}
+    }
+
+    // Tekshirish so'rovi
+    function sendCheckin(code, overrideReason = null) {
+        if (!code) return;
+        lastScannedCode = code;
+
+        fetch("{{ url_for('visits.checkin_api') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                qr_code: code,
+                override_reason: overrideReason
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            renderResult(data);
+            input.value = '';
+            input.focus();
+        })
+        .catch(err => {
+            alert("Aloqa xatoligi yuz berdi!");
+            input.value = '';
+        });
+    }
+
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = this.value.trim();
+            if (val) {
+                sendCheckin(val);
+            }
+        }
+    });
+
+    overrideBtn.addEventListener('click', function() {
+        const reason = overrideReasonInput.value.trim();
+        if (!reason) {
+            alert("Iltimos, istisno ruxsat sababini kiriting!");
+            return;
+        }
+        sendCheckin(lastScannedCode, reason);
+        overrideReasonInput.value = '';
+    });
+
+    function renderResult(data) {
+        resultCard.style.display = 'block';
+        resultTime.innerText = data.visit_time || '';
+
+        if (data.success) {
+            playBeep('success');
+            resultHeader.className = 'card-header text-white fs-5 fw-bold bg-success d-flex align-items-center justify-content-between';
+            resultStatusText.innerText = "✓ RUXSAT BERILDI (XUSH KELIBSIZ!)";
+            reasonAlert.style.display = 'none';
+            overrideSection.style.display = 'none';
+
+            // Jadvalga yangi qator qo'shish
+            if (data.client) {
+                const emptyRow = document.getElementById('emptyRow');
+                if (emptyRow) emptyRow.remove();
+
+                const newRow = `
+                    <tr class="table-success">
+                        <td><small class="fw-bold">${data.visit_time}</small></td>
+                        <td>
+                            <div><b>${data.client.full_name}</b></div>
+                            <small class="text-muted">${data.subscription ? data.subscription.tariff_name : '-'}</small>
+                        </td>
+                        <td><span class="badge bg-success">Ruxsat</span></td>
+                    </tr>
+                `;
+                visitsTable.insertAdjacentHTML('afterbegin', newRow);
+            }
+        } else {
+            playBeep('denied');
+            resultHeader.className = 'card-header text-white fs-5 fw-bold bg-danger d-flex align-items-center justify-content-between';
+            resultStatusText.innerText = "✗ KIRISH RAD ETILDI!";
+            reasonAlert.style.display = 'block';
+            reasonText.innerText = data.reason;
+            overrideSection.style.display = 'block';
+        }
+
+        if (data.client) {
+            clientName.innerText = data.client.full_name;
+            clientPhone.innerText = data.client.phone;
+            clientPhoto.src = data.client.photo_url || "https://ui-avatars.com/api/?name=" + encodeURIComponent(data.client.full_name) + "&background=255F38&color=fff&size=150";
+        } else {
+            clientName.innerText = "Noma'lum QR-kod";
+            clientPhone.innerText = "-";
+            clientPhoto.src = "https://ui-avatars.com/api/?name=Guest&background=dc3545&color=fff&size=150";
+        }
+
+        if (data.subscription) {
+            tariffName.innerText = data.subscription.tariff_name;
+            subDates.innerText = data.subscription.start_date + " - " + data.subscription.end_date;
+            daysLeft.innerText = data.subscription.days_left + " kun qoldi";
+        } else {
+            tariffName.innerText = "Mavjud emas";
+            subDates.innerText = "-";
+            daysLeft.innerText = "0 kun";
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Omborga Kirim{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 text-success"><i class="fa-solid fa-cart-flatbed me-2"></i> Omborga Mahsulot Kirim Qilish</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('inventory.income') }}">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Mahsulotni tanlang <span class="text-danger">*</span></label>
+                        <select name="product_id" class="form-select" required>
+                            <option value="">-- Mahsulotni tanlang --</option>
+                            {% for p in products %}
+                            <option value="{{ p.id }}">{{ p.name }} (Mavjud: {{ p.stock_quantity }} {{ p.unit }}, Tannarx: {{ p.formatted_purchase_price }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Kirim miqdori <span class="text-danger">*</span></label>
+                            <input type="number" name="quantity" class="form-control" required min="1" value="10">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Yangi kelish narxi (so'm, ixtiyoriy)</label>
+                            <input type="number" name="purchase_price" class="form-control" step="500" placeholder="O'zgarmasa bo'sh qoldiring">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold">Yetkazib beruvchi / Hujjat izohi</label>
+                        <input type="text" name="notes" class="form-control" placeholder="Faktura №123, partiya xaridi">
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success fw-bold">
+                            <i class="fa-solid fa-check me-1"></i> Kirimni tasdiqlash
+                        </button>
+                        <a href="{{ url_for('inventory.index') }}" class="btn btn-outline-secondary">Bekor qilish</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Ombor Harakatlari Jurnali{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1" style="color: #255F38;"><i class="fa-solid fa-truck-ramp-box me-2"></i> Ombor Harakatlari Jurnali</h4>
+        <p class="text-muted small mb-0">Barcha kirim, chiqim, savdo, qaytarish va inventarizatsiya operatsiyalari</p>
+    </div>
+    <a href="{{ url_for('inventory.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-boxes-stacked me-1"></i> Ombor ro'yxati
+    </a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Sana & Vaqt</th>
+                        <th>Mahsulot</th>
+                        <th>Operatsiya turi</th>
+                        <th>Miqdor</th>
+                        <th>Avvalgi qoldiq</th>
+                        <th>Yangi qoldiq</th>
+                        <th>Hujjat / Izoh</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in movements %}
+                    <tr>
+                        <td>#{{ m.id }}</td>
+                        <td><small>{{ m.created_at.strftime('%d.%m.%Y %H:%M') }}</small></td>
+                        <td><b>{{ m.product.name }}</b></td>
+                        <td>
+                            {% if m.movement_type == 'in' %}
+                            <span class="badge bg-success">Kirim</span>
+                            {% elif m.movement_type == 'out_sale' %}
+                            <span class="badge bg-primary">Sotuv chiqimi</span>
+                            {% elif m.movement_type == 'return' %}
+                            <span class="badge bg-warning text-dark">Qaytarish (Vozvrat)</span>
+                            {% elif m.movement_type == 'write_off' %}
+                            <span class="badge bg-danger">Hisobdan chiqarish</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inventarizatsiya</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <b class="{% if m.movement_type in ['out_sale', 'write_off'] %}text-danger{% else %}text-success{% endif %}">
+                                {% if m.movement_type in ['out_sale', 'write_off'] %}-{% else %}+{% endif %}{{ m.quantity }}
+                            </b>
+                        </td>
+                        <td>{{ m.previous_stock }}</td>
+                        <td><b>{{ m.new_stock }}</b></td>
+                        <td><small class="text-muted">{{ m.notes or m.reference_id or '-' }}</small></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">Harakatlar topilmadi</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if pagination.pages > 1 %}
+<nav class="mt-4">
+    <ul class="pagination pagination-sm justify-content-center">
+        {% for page in pagination.iter_pages() %}
+            {% if page %}
+                <li class="page-item {% if page == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('inventory.movements', page=page) }}">{{ page }}</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

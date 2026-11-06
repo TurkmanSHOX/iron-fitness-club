@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Muzlatish So'rovlari{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1" style="color: #255F38;"><i class="fa-solid fa-snowflake me-2"></i> Abonementni Muzlatish So'rovlari</h4>
+        <p class="text-muted small mb-0">Mijozlar tomonidan Telegram bot orqali yuborilgan muzlatish talablari</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('subscriptions.freeze_requests', status='pending') }}" class="btn btn-sm {% if status_filter == 'pending' %}btn-warning{% else %}btn-outline-warning{% endif %}">
+            Kutilayotganlar
+        </a>
+        <a href="{{ url_for('subscriptions.freeze_requests', status='all') }}" class="btn btn-sm {% if status_filter == 'all' %}btn-dark{% else %}btn-outline-dark{% endif %}">
+            Barchasi
+        </a>
+    </div>
+</div>
+
+<div class="alert alert-light border small text-muted mb-4">
+    <i class="fa-solid fa-circle-info text-primary me-1"></i> Maksimal muzlatish muddati: <b>{{ max_days }} kun</b>. Tasdiqlangan har bir muzlatish avtomatik ravishda abonementning tugash sanasini uzaytiradi va Telegram orqali xabar beradi.
+</div>
+
+<!-- SO'ROVLAR JADVALI -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Yuborilgan sana</th>
+                        <th>Mijoz</th>
+                        <th>Tarif</th>
+                        <th>Boshlanish</th>
+                        <th>Davomiyligi</th>
+                        <th>Sababi</th>
+                        <th>Holati</th>
+                        <th class="text-end">Amallar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in requests_list %}
+                    <tr>
+                        <td>#{{ req.id }}</td>
+                        <td><small class="text-muted">{{ req.created_at.strftime('%d.%m.%Y %H:%M') }}</small></td>
+                        <td>
+                            <a href="{{ url_for('clients.detail', id=req.client.id) }}" class="fw-bold text-decoration-none text-dark">
+                                {{ req.client.full_name }}
+                            </a>
+                            <div class="text-muted small">{{ req.client.phone }}</div>
+                        </td>
+                        <td><small>{{ req.subscription.tariff.name }}</small></td>
+                        <td>{{ req.start_date.strftime('%d.%m.%Y') }}</td>
+                        <td><span class="badge bg-info text-dark">{{ req.days_count }} kun</span></td>
+                        <td><small class="text-muted">{{ req.reason or 'Sabab ko\'rsatilmagan' }}</small></td>
+                        <td>
+                            {% if req.status == 'pending' %}
+                                <span class="badge bg-warning text-dark">Kutilmoqda</span>
+                            {% elif req.status == 'approved' %}
+                                <span class="badge bg-success">Tasdiqlangan</span>
+                            {% else %}
+                                <span class="badge bg-danger">Rad etilgan</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if req.status == 'pending' %}
+                            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approveModal{{ req.id }}">
+                                <i class="fa-solid fa-check me-1"></i> Tasdiqlash
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ req.id }}">
+                                <i class="fa-solid fa-xmark me-1"></i> Rad etish
+                            </button>
+
+                            <!-- TASDIQLASH MODALI -->
+                            <div class="modal fade" id="approveModal{{ req.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content text-start">
+                                        <form method="POST" action="{{ url_for('subscriptions.approve_freeze', id=req.id) }}">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title text-success"><i class="fa-solid fa-snowflake me-2"></i> Muzlatishni Tasdiqlash</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Mijoz <b>{{ req.client.full_name }}</b> uchun <b>{{ req.days_count }} kunlik</b> muzlatishni tasdiqlamoqchimisiz?</p>
+                                                <div class="alert alert-success small">
+                                                    Abonement muddati {{ req.days_count }} kunga avtomatik uzaytiriladi!
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label small fw-semibold">Admin izohi (Mijozga yuboriladi)</label>
+                                                    <input type="text" name="admin_comment" class="form-control" placeholder="Tasdiqlandi. Tez kunda kuting!">
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Bekor qilish</button>
+                                                <button type="submit" class="btn btn-success btn-sm fw-bold">Ha, tasdiqlash</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- RAD ETISH MODALI -->
+                            <div class="modal fade" id="rejectModal{{ req.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content text-start">
+                                        <form method="POST" action="{{ url_for('subscriptions.reject_freeze', id=req.id) }}">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title text-danger"><i class="fa-solid fa-ban me-2"></i> So'rovni Rad Etish</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Mijoz <b>{{ req.client.full_name }}</b> ning muzlatish so'rovini rad etmoqchimisiz?</p>
+                                                <div class="mb-3">
+                                                    <label class="form-label small fw-semibold">Rad etish sababi <span class="text-danger">*</span></label>
+                                                    <input type="text" name="admin_comment" class="form-control" required placeholder="Masalan: Ushbu oyda limit tugagan">
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Bekor qilish</button>
+                                                <button type="submit" class="btn btn-danger btn-sm fw-bold">Rad etish</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <small class="text-muted">{{ req.admin_comment or '-' }}</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">Muzlatish so'rovlari mavjud emas</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

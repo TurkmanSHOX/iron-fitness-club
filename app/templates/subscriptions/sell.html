@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Abonement Rasmiylashtirish{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 text-success"><i class="fa-solid fa-cart-plus me-2"></i> Abonement Rasmiylashtirish (Sotish)</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" id="sellForm">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Mijozni tanlang <span class="text-danger">*</span></label>
+                        <select name="client_id" class="form-select" required>
+                            <option value="">-- Mijozni tanlang --</option>
+                            {% for c in clients %}
+                            <option value="{{ c.id }}" {% if selected_client_id == c.id %}selected{% endif %}>
+                                {{ c.full_name }} ({{ c.phone }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Tarif rejasini tanlang <span class="text-danger">*</span></label>
+                            <select name="tariff_id" id="tariffSelect" class="form-select" required>
+                                <option value="">-- Tarifni tanlang --</option>
+                                {% for t in tariffs %}
+                                <option value="{{ t.id }}" data-price="{{ t.price }}" data-days="{{ t.duration_days }}">
+                                    {{ t.name }} - {{ t.formatted_price }} ({{ t.duration_days }} kun)
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Boshlanish sanasi <span class="text-danger">*</span></label>
+                            <input type="date" name="start_date" class="form-control" value="{{ today }}" required>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Tarif narxi</label>
+                            <input type="text" id="basePriceInput" class="form-control bg-light" readonly value="0 so'm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Chegirma (so'm)</label>
+                            <input type="number" name="discount_amount" id="discountInput" class="form-control" value="0" min="0" step="1000">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Yakuniy to'lov (so'm) <span class="text-danger">*</span></label>
+                            <input type="number" name="paid_amount" id="paidAmountInput" class="form-control fw-bold text-success fs-5" required min="0" step="1000">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">To'lov usuli <span class="text-danger">*</span></label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="payment_method" id="payCash" value="cash" checked>
+                                <label class="form-check-label" for="payCash">
+                                    <i class="fa-solid fa-money-bill-wave text-success me-1"></i> Naqd pul
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="payment_method" id="payCard" value="card">
+                                <label class="form-check-label" for="payCard">
+                                    <i class="fa-solid fa-credit-card text-primary me-1"></i> Bank kartasi (Terminal)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="payment_method" id="payClick" value="click">
+                                <label class="form-check-label" for="payClick">
+                                    <i class="fa-solid fa-mobile-screen-button text-info me-1"></i> Click
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="payment_method" id="payPayme" value="payme">
+                                <label class="form-check-label" for="payPayme">
+                                    <i class="fa-solid fa-wallet text-secondary me-1"></i> Payme
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold">Qo'shimcha izoh</label>
+                        <input type="text" name="notes" class="form-control" placeholder="Admin izohi (ixtiyoriy)">
+                    </div>
+
+                    <div class="alert alert-light border small text-muted mb-4">
+                        <i class="fa-solid fa-circle-check text-success me-1"></i> To'lov tasdiqlangach avtomatik ravishda PDF elektron chek yaratiladi va mijozning QR-kodi faollashadi.
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success fw-bold px-4">
+                            <i class="fa-solid fa-check me-1"></i> Sotishni tasdiqlash
+                        </button>
+                        <a href="{{ url_for('subscriptions.index') }}" class="btn btn-outline-secondary">Bekor qilish</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const tariffSelect = document.getElementById('tariffSelect');
+    const basePriceInput = document.getElementById('basePriceInput');
+    const discountInput = document.getElementById('discountInput');
+    const paidAmountInput = document.getElementById('paidAmountInput');
+
+    function calculateTotal() {
+        const selected = tariffSelect.options[tariffSelect.selectedIndex];
+        const price = parseFloat(selected.getAttribute('data-price') || 0);
+        const discount = parseFloat(discountInput.value || 0);
+        
+        basePriceInput.value = price.toLocaleString() + " so'm";
+        const finalPrice = Math.max(0, price - discount);
+        paidAmountInput.value = finalPrice;
+    }
+
+    tariffSelect.addEventListener('change', calculateTotal);
+    discountInput.addEventListener('input', calculateTotal);
+</script>
+{% endblock %}

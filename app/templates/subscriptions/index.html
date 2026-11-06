@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Abonementlar Boshqaruvi{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1" style="color: #255F38;"><i class="fa-solid fa-id-card me-2"></i> Abonementlar</h4>
+        <p class="text-muted small mb-0">Mijozlarning barcha sotilgan va faol abonementlari</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('subscriptions.sell') }}" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-cart-plus me-1"></i> Yangi abonement sotish
+        </a>
+        <a href="{{ url_for('subscriptions.freeze_requests') }}" class="btn btn-outline-warning btn-sm">
+            <i class="fa-solid fa-snowflake me-1"></i> Muzlatish so'rovlari
+        </a>
+    </div>
+</div>
+
+<!-- FILTRLAR -->
+<div class="card mb-4">
+    <div class="card-body p-3">
+        <form method="GET" action="{{ url_for('subscriptions.index') }}" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Mijoz ismi yoki telefoni..." value="{{ search }}">
+            </div>
+            <div class="col-md-4">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Barcha holatlar</option>
+                    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Faqat faollar</option>
+                    <option value="frozen" {% if status_filter == 'frozen' %}selected{% endif %}>Muzlatilganlar</option>
+                    <option value="expired" {% if status_filter == 'expired' %}selected{% endif %}>Muddati tugaganlar</option>
+                    <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Bekor qilinganlar</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+                    <i class="fa-solid fa-filter me-1"></i> Filtrlash
+                </button>
+                <a href="{{ url_for('subscriptions.index') }}" class="btn btn-sm btn-outline-secondary">Tozalash</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- JADVAL -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Mijoz</th>
+                        <th>Tarif</th>
+                        <th>Boshlanish</th>
+                        <th>Tugash</th>
+                        <th>Qolgan muddat</th>
+                        <th>To'langan summa</th>
+                        <th>Holati</th>
+                        <th class="text-end">Amallar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in subscriptions %}
+                    <tr>
+                        <td>{{ s.id }}</td>
+                        <td>
+                            <a href="{{ url_for('clients.detail', id=s.client.id) }}" class="fw-bold text-decoration-none text-dark">
+                                {{ s.client.full_name }}
+                            </a>
+                            <div class="text-muted small">{{ s.client.phone }}</div>
+                        </td>
+                        <td><b>{{ s.tariff.name }}</b></td>
+                        <td>{{ s.start_date.strftime('%d.%m.%Y') }}</td>
+                        <td>{{ s.end_date.strftime('%d.%m.%Y') }}</td>
+                        <td>
+                            {% if s.status == 'active' %}
+                                <span class="badge bg-success-subtle text-success fs-7">{{ s.days_left }} kun</span>
+                            {% elif s.status == 'frozen' %}
+                                <span class="badge bg-info-subtle text-info fs-7">Muzlatilgan</span>
+                            {% else %}
+                                <span class="text-muted small">0 kun</span>
+                            {% endif %}
+                        </td>
+                        <td><b>{{ "{:,.0f}".format(s.paid_amount).replace(',', ' ') }} so'm</b></td>
+                        <td>
+                            <span class="badge {{ s.status_badge_class }}">{{ s.status_label }}</span>
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('clients.detail', id=s.client.id) }}" class="btn btn-sm btn-outline-primary" title="Mijoz profili">
+                                <i class="fa-solid fa-user"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">Abonementlar topilmadi</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- SAHIFALASH -->
+{% if pagination.pages > 1 %}
+<nav class="mt-4">
+    <ul class="pagination pagination-sm justify-content-center">
+        {% for page in pagination.iter_pages() %}
+            {% if page %}
+                <li class="page-item {% if page == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('subscriptions.index', page=page, search=search, status=status_filter) }}">{{ page }}</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

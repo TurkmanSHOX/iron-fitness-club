@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+
+{% block title %}{{ client.full_name }} - Profil{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <a href="{{ url_for('clients.index') }}" class="text-decoration-none text-muted small mb-1 d-inline-block">
+            &larr; Mijozlar ro'yxatiga qaytish
+        </a>
+        <h4 class="fw-bold mb-0" style="color: #255F38;">{{ client.full_name }}</h4>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('subscriptions.sell', client_id=client.id) }}" class="btn btn-success btn-sm">
+            <i class="fa-solid fa-cart-plus me-1"></i> Abonement sotish / uzaytirish
+        </a>
+        <a href="{{ url_for('clients.download_qr', id=client.id) }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-qrcode me-1"></i> QR kodni yuklab olish
+        </a>
+        <a href="{{ url_for('clients.edit', id=client.id) }}" class="btn btn-outline-warning btn-sm">
+            <i class="fa-solid fa-pen-to-square me-1"></i> Tahrirlash
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- CHAP: MIJOZ KARTASI VA QR -->
+    <div class="col-lg-4">
+        <!-- SHAXSIY KARTA -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body p-4 text-center">
+                <img src="{{ client.photo_url if client.photo_url else 'https://ui-avatars.com/api/?name=' + client.full_name + '&background=255F38&color=fff&size=150' }}" 
+                     class="rounded-circle border mb-3 shadow-sm" style="width: 110px; height: 110px; object-fit: cover;" alt="Avatar">
+                <h5 class="fw-bold mb-1">{{ client.full_name }}</h5>
+                <p class="text-muted small mb-3"><i class="fa-solid fa-phone me-1"></i> {{ client.phone }}</p>
+
+                <div class="text-start border-top pt-3">
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span class="text-muted small">Tizim ID:</span>
+                        <b class="small">#{{ client.id }}</b>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span class="text-muted small">Jinsi:</span>
+                        <span class="small">{{ 'Erkak' if client.gender == 'male' else 'Ayol' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span class="text-muted small">Tug'ilgan sana:</span>
+                        <span class="small">{{ client.birth_date.strftime('%d.%m.%Y') if client.birth_date else '-' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span class="text-muted small">Ro'yxatdan o'tgan:</span>
+                        <span class="small">{{ client.created_at.strftime('%d.%m.%Y') }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span class="text-muted small">Telegram:</span>
+                        <span class="small">
+                            {% if client.telegram_user %}
+                                <span class="badge bg-success-subtle text-success">@{{ client.telegram_user.username or client.telegram_user.telegram_id }}</span>
+                            {% else %}
+                                <span class="text-muted">Ulanmagan</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-muted small">Holati:</span>
+                        <span class="badge {% if client.status == 'active' %}bg-success{% else %}bg-secondary{% endif %}">{{ client.status }}</span>
+                    </div>
+                </div>
+
+                {% if client.notes %}
+                <div class="alert alert-light border small text-start mt-3 mb-0">
+                    <b>Izoh:</b> {{ client.notes }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- QR KOD KARTASI -->
+        <div class="card shadow-sm text-center">
+            <div class="card-header bg-white">
+                <span class="fw-bold small text-muted"><i class="fa-solid fa-qrcode me-1"></i> Shaxsiy QR Identifikator</span>
+            </div>
+            <div class="card-body p-4">
+                <div class="p-2 border rounded d-inline-block bg-white shadow-sm mb-3">
+                    <img src="{{ url_for('clients.download_qr', id=client.id) }}" style="width: 140px; height: 140px;" alt="QR Code">
+                </div>
+                <div class="font-monospace fw-bold fs-6 text-success mb-2">{{ client.qr_code }}</div>
+                <p class="text-muted small mb-3">Zalga kirishda ushbu QR-kod 2D skanerga ko'rsatiladi</p>
+                <a href="{{ url_for('clients.download_qr', id=client.id) }}" class="btn btn-sm btn-outline-success w-100">
+                    <i class="fa-solid fa-download me-1"></i> Rasmni yuklab olish
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- O'NG: JORIY ABONEMENT VA TARIXLAR -->
+    <div class="col-lg-8">
+        <!-- JORIY ABONEMENT BLOKI -->
+        {% set active_sub = client.active_subscription %}
+        <div class="card shadow-sm mb-4 border-2 {% if active_sub %}border-success{% else %}border-secondary{% endif %}">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                    <div>
+                        <span class="text-muted small text-uppercase fw-semibold">Joriy Abonement</span>
+                        <h4 class="fw-bold mb-0 text-success">
+                            {{ active_sub.tariff.name if active_sub else 'Faol abonement mavjud emas' }}
+                        </h4>
+                    </div>
+                    {% if active_sub %}
+                    <span class="badge {{ active_sub.status_badge_class }} fs-6 px-3 py-2">
+                        {{ active_sub.status_label }}
+                    </span>
+                    {% endif %}
+                </div>
+
+                {% if active_sub %}
+                <div class="row g-3 py-2 border-top">
+                    <div class="col-sm-3 col-6">
+                        <small class="text-muted d-block">Boshlanish</small>
+                        <b>{{ active_sub.start_date.strftime('%d.%m.%Y') }}</b>
+                    </div>
+                    <div class="col-sm-3 col-6">
+                        <small class="text-muted d-block">Tugash sanasi</small>
+                        <b>{{ active_sub.end_date.strftime('%d.%m.%Y') }}</b>
+                    </div>
+                    <div class="col-sm-3 col-6">
+                        <small class="text-muted d-block">Qolgan muddat</small>
+                        <b class="text-success fs-5">{{ active_sub.days_left }} kun</b>
+                    </div>
+                    <div class="col-sm-3 col-6">
+                        <small class="text-muted d-block">To'langan summa</small>
+                        <b>{{ "{:,.0f}".format(active_sub.paid_amount).replace(',', ' ') }} so'm</b>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-muted small mb-3">Mijozda hozirda amal qilayotgan faol abonement yo'q. Quyidagi tugma orqali yangi abonement sotishingiz mumkin.</p>
+                <a href="{{ url_for('subscriptions.sell', client_id=client.id) }}" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-plus me-1"></i> Yangi abonement sotish
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- TABLAR (TARIX) -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-white p-2">
+                <ul class="nav nav-tabs card-header-tabs" id="clientTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active small fw-semibold" data-bs-toggle="tab" data-bs-target="#tabVisits">
+                            <i class="fa-solid fa-clock-rotate-left me-1"></i> Tashriflar ({{ visits|length }})
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link small fw-semibold" data-bs-toggle="tab" data-bs-target="#tabSubscriptions">
+                            <i class="fa-solid fa-id-card me-1"></i> Abonementlar ({{ subscriptions|length }})
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link small fw-semibold" data-bs-toggle="tab" data-bs-target="#tabPayments">
+                            <i class="fa-solid fa-receipt me-1"></i> To'lovlar ({{ payments|length }})
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link small fw-semibold" data-bs-toggle="tab" data-bs-target="#tabSales">
+                            <i class="fa-solid fa-cart-shopping me-1"></i> Bar savdosi ({{ sales|length }})
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body p-0">
+                <div class="tab-content">
+                    <!-- TASHRIFLAR -->
+                    <div class="tab-pane fade show active p-0" id="tabVisits">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Sana</th>
+                                        <th>Vaqt</th>
+                                        <th>Usul</th>
+                                        <th>Holat</th>
+                                        <th>Izoh</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for v in visits %}
+                                    <tr>
+                                        <td><b>{{ v.formatted_date }}</b></td>
+                                        <td>{{ v.formatted_time }}</td>
+                                        <td><small class="badge bg-light text-dark">{{ 'QR' if v.scan_type == 'qr' else 'Qo\'lda' }}</small></td>
+                                        <td>
+                                            <span class="badge {% if v.status == 'allowed' %}bg-success{% else %}bg-danger{% endif %}">
+                                                {{ 'Ruxsat' if v.status == 'allowed' else 'Rad' }}
+                                            </span>
+                                        </td>
+                                        <td><small class="text-muted">{{ v.notes or v.denial_reason or '-' }}</small></td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="5" class="text-center py-4 text-muted">Tashriflar tarixi mavjud emas</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- ABONEMENTLAR -->
+                    <div class="tab-pane fade p-0" id="tabSubscriptions">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Tarif</th>
+                                        <th>Boshlanish</th>
+                                        <th>Tugash</th>
+                                        <th>To'langan</th>
+                                        <th>Holat</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for s in subscriptions %}
+                                    <tr>
+                                        <td><b>{{ s.tariff.name }}</b></td>
+                                        <td>{{ s.start_date.strftime('%d.%m.%Y') }}</td>
+                                        <td>{{ s.end_date.strftime('%d.%m.%Y') }}</td>
+                                        <td>{{ "{:,.0f}".format(s.paid_amount).replace(',', ' ') }} so'm</td>
+                                        <td><span class="badge {{ s.status_badge_class }}">{{ s.status_label }}</span></td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="5" class="text-center py-4 text-muted">Abonementlar tarixi yo'q</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- TO'LOVLAR -->
+                    <div class="tab-pane fade p-0" id="tabPayments">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>№ Raqam</th>
+                                        <th>Sana</th>
+                                        <th>Turi</th>
+                                        <th>Usul</th>
+                                        <th>Summa</th>
+                                        <th>Chek</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for p in payments %}
+                                    <tr>
+                                        <td><small class="font-monospace">{{ p.payment_number }}</small></td>
+                                        <td><small>{{ p.created_at.strftime('%d.%m.%Y %H:%M') }}</small></td>
+                                        <td><small>{{ p.type_label }}</small></td>
+                                        <td><span class="badge bg-light text-dark">{{ p.method_label }}</span></td>
+                                        <td class="fw-bold text-success">{{ "{:,.0f}".format(p.amount).replace(',', ' ') }} so'm</td>
+                                        <td>
+                                            {% if p.receipt_pdf_path %}
+                                            <a href="/api/uploads/{{ p.receipt_pdf_path }}" target="_blank" class="btn btn-sm btn-outline-secondary py-0">
+                                                <i class="fa-solid fa-file-pdf"></i>
+                                            </a>
+                                            {% else %}-{% endif %}
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="6" class="text-center py-4 text-muted">To'lovlar topilmadi</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- BAR VA MAHSULOT SAVDOSI -->
+                    <div class="tab-pane fade p-0" id="tabSales">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Savdo №</th>
+                                        <th>Sana</th>
+                                        <th>Mahsulotlar</th>
+                                        <th>Summa</th>
+                                        <th>Holat</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for s in sales %}
+                                    <tr>
+                                        <td><small class="font-monospace">{{ s.sale_number }}</small></td>
+                                        <td><small>{{ s.created_at.strftime('%d.%m.%Y %H:%M') }}</small></td>
+                                        <td>
+                                            {% for item in s.items %}
+                                            <small class="d-block">{{ item.product_name }} x{{ item.quantity }}</small>
+                                            {% endfor %}
+                                        </td>
+                                        <td class="fw-bold text-success">{{ "{:,.0f}".format(s.final_amount).replace(',', ' ') }} so'm</td>
+                                        <td><span class="badge bg-success">{{ s.status }}</span></td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="5" class="text-center py-4 text-muted">Mahsulot xaridlari yo'q</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ARXIVLASH TUGMASI -->
+        <div class="text-end mt-4">
+            <form method="POST" action="{{ url_for('clients.archive', id=client.id) }}" onsubmit="return confirm('Haqiqatan ham ushbu mijozni arxivlamoqchimisiz? Tarixiy ma\'lumotlar saqlanadi.');">
+                <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <i class="fa-solid fa-box-archive me-1"></i> Mijozni arxivga olish
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

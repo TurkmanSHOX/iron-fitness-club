@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Aksiyalar & Chegirmalar{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1" style="color: #255F38;"><i class="fa-solid fa-gift me-2"></i> Aksiyalar & Chegirmalar</h4>
+        <p class="text-muted small mb-0">Maxsus takliflar, promo-kodlar va muddatli chegirmalar</p>
+    </div>
+    <a href="{{ url_for('promotions.add') }}" class="btn btn-primary btn-sm">
+        <i class="fa-solid fa-plus me-1"></i> Yangi aksiya yaratish
+    </a>
+</div>
+
+<div class="row g-4">
+    {% for p in promotions %}
+    <div class="col-md-6 col-xl-4">
+        <div class="card h-100 shadow-sm border-2 {% if p.is_currently_valid %}border-success{% else %}border-secondary opacity-75{% endif %}">
+            <div class="card-header bg-white d-flex align-items-center justify-content-between">
+                <span class="badge {% if p.is_currently_valid %}bg-success{% else %}bg-secondary{% endif %}">
+                    {{ 'Faol' if p.is_currently_valid else 'Yakunlangan' }}
+                </span>
+                <small class="text-muted">{{ p.start_date.strftime('%d.%m') }} - {{ p.end_date.strftime('%d.%m.%Y') }}</small>
+            </div>
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-1">{{ p.title }}</h5>
+                <p class="text-muted small mb-3">{{ p.description or 'Tavsif yo\'q' }}</p>
+
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span class="fs-4 fw-bold text-success">
+                        {% if p.discount_type == 'percent' %}
+                        -{{ p.discount_value|int }}%
+                        {% else %}
+                        -{{ "{:,.0f}".format(p.discount_value).replace(',', ' ') }} so'm
+                        {% endif %}
+                    </span>
+                    <span class="badge bg-light text-dark border">
+                        {{ p.tariff.name if p.tariff else 'Barcha tariflar' }}
+                    </span>
+                </div>
+
+                <div class="border-top pt-2 small text-muted">
+                    <div>Mijozlar: <b>{{ 'Barchasi' if p.target_audience == 'all' else 'Faqat yangilar' }}</b></div>
+                    <div>Foydalanish: <b>{{ p.current_uses }} marta</b> {% if p.max_uses %}/ maks: {{ p.max_uses }}{% endif %}</div>
+                    
+                    {% set code = p.promo_codes.first() %}
+                    {% if code %}
+                    <div class="mt-2">
+                        Promo-kod: <span class="badge bg-warning text-dark font-monospace fs-6">{{ code.code }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-footer bg-white text-end">
+                <form method="POST" action="{{ url_for('promotions.toggle', id=p.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-sm {% if p.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                        {{ 'To\'xtatish' if p.is_active else 'Faollashtirish' }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center py-5 text-muted">
+        <i class="fa-solid fa-gift fs-1 mb-2 d-block"></i>
+        Hozirda faol aksiyalar mavjud emas. Yuqoridagi tugma orqali yangi aksiya qo'shishingiz mumkin.
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

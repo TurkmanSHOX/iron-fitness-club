@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Hisobotlar & Tahlil{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1" style="color: #255F38;"><i class="fa-solid fa-file-invoice-dollar me-2"></i> Hisobotlar & Moliyaviy Tahlil</h4>
+        <p class="text-muted small mb-0">Daromadlar, xarajatlar, to'lov turlari va tashriflar hisoboti</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('reports.export_excel', start_date=start_date, end_date=end_date) }}" class="btn btn-success btn-sm">
+            <i class="fa-solid fa-file-excel me-1"></i> Excel hisobotni yuklab olish (.xlsx)
+        </a>
+        <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-print me-1"></i> Chop etish
+        </button>
+    </div>
+</div>
+
+<!-- SANA FILTRI -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-body p-3">
+        <form method="GET" action="{{ url_for('reports.index') }}" class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Boshlanish sanasi</label>
+                <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Tugash sanasi</label>
+                <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date }}">
+            </div>
+            <div class="col-md-4 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+                    <i class="fa-solid fa-filter me-1"></i> Hisobotni ko'rish
+                </button>
+                <a href="{{ url_for('reports.index') }}" class="btn btn-sm btn-outline-secondary">Tozalash</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ASOSIY MOLIYAVIY XULOSA -->
+<div class="row g-3 mb-4">
+    <!-- JAMI TUSHUM -->
+    <div class="col-md-4">
+        <div class="stat-card border-success border-2">
+            <div class="stat-icon success">
+                <i class="fa-solid fa-sack-dollar"></i>
+            </div>
+            <div class="stat-details">
+                <h3 class="text-success">{{ "{:,.0f}".format(total_income).replace(',', ' ') }} <small class="fs-6 text-muted">so'm</small></h3>
+                <p>Jami tushum (Abonement + Bar)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAMI XARAJAT -->
+    <div class="col-md-4">
+        <div class="stat-card border-danger border-2">
+            <div class="stat-icon danger">
+                <i class="fa-solid fa-money-bill-wave"></i>
+            </div>
+            <div class="stat-details">
+                <h3 class="text-danger">{{ "{:,.0f}".format(total_expenses).replace(',', ' ') }} <small class="fs-6 text-muted">so'm</small></h3>
+                <p>Jami xarajatlar</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SOF FOYDA -->
+    <div class="col-md-4">
+        <div class="stat-card border-primary border-2">
+            <div class="stat-icon primary">
+                <i class="fa-solid fa-chart-line"></i>
+            </div>
+            <div class="stat-details">
+                <h3 class="{% if net_profit >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    {{ "{:,.0f}".format(net_profit).replace(',', ' ') }} <small class="fs-6 text-muted">so'm</small>
+                </h3>
+                <p>Sof foyda (Daromad - Xarajat)</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TO'LOV USULLARI TAQSIMOTI -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <div class="card p-3 border shadow-sm">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="small text-muted"><i class="fa-solid fa-money-bill-wave text-success me-1"></i> Naqd pul</span>
+            </div>
+            <h5 class="fw-bold mb-0 text-dark">{{ "{:,.0f}".format(cash_payments).replace(',', ' ') }} so'm</h5>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card p-3 border shadow-sm">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="small text-muted"><i class="fa-solid fa-credit-card text-primary me-1"></i> Bank kartasi</span>
+            </div>
+            <h5 class="fw-bold mb-0 text-dark">{{ "{:,.0f}".format(card_payments).replace(',', ' ') }} so'm</h5>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card p-3 border shadow-sm">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="small text-muted"><i class="fa-solid fa-mobile-screen text-info me-1"></i> Click</span>
+            </div>
+            <h5 class="fw-bold mb-0 text-dark">{{ "{:,.0f}".format(click_payments).replace(',', ' ') }} so'm</h5>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card p-3 border shadow-sm">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="small text-muted"><i class="fa-solid fa-wallet text-secondary me-1"></i> Payme</span>
+            </div>
+            <h5 class="fw-bold mb-0 text-dark">{{ "{:,.0f}".format(payme_payments).replace(',', ' ') }} so'm</h5>
+        </div>
+    </div>
+</div>
+
+<!-- TO'LOVLAR RO'YXATI -->
+<div class="card shadow-sm">
+    <div class="card-header bg-white d-flex align-items-center justify-content-between">
+        <span class="fw-bold"><i class="fa-solid fa-list-check me-2 text-success"></i> Tanlangan davrdagi to'lovlar</span>
+        <span class="badge bg-light text-dark">{{ payments_list|length }} ta tranzaksiya</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>№ Chek raqami</th>
+                        <th>Sana & Vaqt</th>
+                        <th>Mijoz</th>
+                        <th>To'lov turi</th>
+                        <th>To'lov usuli</th>
+                        <th class="text-end">Summa</th>
+                        <th>Chek</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in payments_list %}
+                    <tr>
+                        <td><small class="font-monospace fw-bold">{{ p.payment_number }}</small></td>
+                        <td><small>{{ p.created_at.strftime('%d.%m.%Y %H:%M') }}</small></td>
+                        <td>
+                            {% if p.client %}
+                            <a href="{{ url_for('clients.detail', id=p.client.id) }}" class="fw-bold text-decoration-none text-dark">
+                                {{ p.client.full_name }}
+                            </a>
+                            {% else %}
+                            <span class="text-muted small">Kassa savdosi</span>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ p.type_label }}</small></td>
+                        <td><span class="badge bg-light text-dark border">{{ p.method_label }}</span></td>
+                        <td class="text-end fw-bold text-success">{{ "{:,.0f}".format(p.amount).replace(',', ' ') }} so'm</td>
+                        <td>
+                            {% if p.receipt_pdf_path %}
+                            <a href="/api/uploads/{{ p.receipt_pdf_path }}" target="_blank" class="btn btn-sm btn-outline-secondary py-0">
+                                <i class="fa-solid fa-file-pdf"></i>
+                            </a>
+                            {% else %}-{% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">Tanlangan davrda to'lovlar topilmadi</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

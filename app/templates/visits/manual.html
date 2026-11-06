@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Qo'lda Kirish (Istisno){% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 text-warning"><i class="fa-solid fa-user-check me-2"></i> Qo'lda Kirishni Qayd Etish (Istisno Ruxsati)</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="alert alert-info small mb-4">
+                    <i class="fa-solid fa-circle-info me-1"></i> Ushbu bo'limdan mijoz QR-kodini ko'rsata olmagan, telefoni quvvatsizlangan yoki qoidadan tashqari istisno holatlarda foydalaniladi. Barcha amallar audit jurnalida saqlanadi.
+                </div>
+
+                <form method="POST" action="{{ url_for('visits.manual_checkin') }}">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Mijozni tanlang</label>
+                        <select name="client_id" class="form-select" required>
+                            <option value="">-- Mijozni tanlang --</option>
+                            {% for c in clients %}
+                            <option value="{{ c.id }}">{{ c.full_name }} ({{ c.phone }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small">Istisno ruxsat sababi (Zarur bo'lsa)</label>
+                        <input type="text" name="override_reason" class="form-control" placeholder="Masalan: Telefoni o'chib qolgan, shaxsan ruxsat berildi">
+                        <div class="form-text small">Agar mijoz tarifi bugun ruxsat bermasa, sabab kiritish orqali kiritish mumkin.</div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-warning fw-bold">
+                            <i class="fa-solid fa-check me-1"></i> Kirishni tasdiqlash
+                        </button>
+                        <a href="{{ url_for('visits.scanner') }}" class="btn btn-outline-secondary">Ortga</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

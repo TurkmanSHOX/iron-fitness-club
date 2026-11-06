@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Tariflar & Narxlar{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1" style="color: #255F38;"><i class="fa-solid fa-tags me-2"></i> Tariflar & Narxlar</h4>
+        <p class="text-muted small mb-0">Fitnes klubining rasmiy tarif rejalari va foydalanish qoidalari</p>
+    </div>
+    <a href="{{ url_for('tariffs.add') }}" class="btn btn-primary btn-sm">
+        <i class="fa-solid fa-plus me-1"></i> Yangi tarif yaratish
+    </a>
+</div>
+
+<!-- TARIFLAR KARTALARI -->
+<div class="row g-4 mb-4">
+    {% for t in tariffs %}
+    <div class="col-md-6 col-xl-3">
+        <div class="card h-100 shadow-sm border-2 {% if t.is_active %}border-success{% else %}border-secondary opacity-75{% endif %}">
+            <div class="card-header bg-white d-flex align-items-center justify-content-between">
+                <span class="badge {% if t.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                    {{ 'Faol' if t.is_active else 'Nofaol' }}
+                </span>
+                <small class="text-muted"><i class="fa-solid fa-calendar me-1"></i> {{ t.duration_days }} kun</small>
+            </div>
+            <div class="card-body p-4 text-center">
+                <h5 class="fw-bold mb-2">{{ t.name }}</h5>
+                <div class="badge bg-light text-dark border mb-3">{{ t.type_label }}</div>
+                
+                <h3 class="fw-bold text-success mb-3">
+                    {{ t.formatted_price }}
+                </h3>
+
+                <p class="text-muted small mb-4" style="min-height: 48px;">
+                    {{ t.description or 'Ushbu tarif uchun tavsif kiritilmagan.' }}
+                </p>
+
+                <div class="d-flex justify-content-center gap-2">
+                    <a href="{{ url_for('tariffs.edit', id=t.id) }}" class="btn btn-sm btn-outline-warning">
+                        <i class="fa-solid fa-pen-to-square me-1"></i> Tahrirlash
+                    </a>
+                    <form method="POST" action="{{ url_for('tariffs.toggle', id=t.id) }}" class="d-inline">
+                        <button type="submit" class="btn btn-sm {% if t.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                            {{ 'O\'chirish' if t.is_active else 'Yoqish' }}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- MA'LUMOT VA QOIDALAR -->
+<div class="card shadow-sm">
+    <div class="card-body p-4">
+        <h6 class="fw-bold text-success mb-2"><i class="fa-solid fa-circle-info me-1"></i> Texnik topshiriq qoidalari:</h6>
+        <ul class="text-muted small mb-0">
+            <li><b>Juft kunlik tarif:</b> Mijoz faqat oyning juft sanalarida (2, 4, 6, 8, 10...) kirishi mumkin.</li>
+            <li><b>Toq kunlik tarif:</b> Mijoz faqat oyning toq sanalarida (1, 3, 5, 7, 9...) kirishi mumkin.</li>
+            <li><b>O'tkazib yuborilgan kunlar:</b> Keyingi sanalarga ko'chirilmaydi va jamlanmaydi.</li>
+            <li><b>Narx o'zgarishi:</b> Administrator tarif narxini o'zgartirsa, yangi narx faqat kelgusi xaridlarga tatbiq etiladi; avval sotilgan abonementlar narxi saqlanadi.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

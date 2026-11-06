@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 text-success"><i class="fa-solid fa-box me-2"></i> {{ title }}</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-7">
+                            <label class="form-label small fw-semibold">Mahsulot nomi <span class="text-danger">*</span></label>
+                            {{ form.name(class="form-control", placeholder="Hydrolife 0.5L Gazsiz") }}
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small fw-semibold">Shtrix-kod / 2D kod <span class="text-danger">*</span></label>
+                            {{ form.barcode(class="form-control font-monospace", placeholder="4780001234567") }}
+                            <div class="form-text small">Skaner orqali o'qishingiz mumkin.</div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Kategoriya</label>
+                            {{ form.category_id(class="form-select") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Yetkazib beruvchi</label>
+                            {{ form.supplier_id(class="form-select") }}
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Kelish (tannarx) narxi (so'm) <span class="text-danger">*</span></label>
+                            {{ form.purchase_price(class="form-control", type="number", step="500") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Sotish narxi (so'm) <span class="text-danger">*</span></label>
+                            {{ form.sale_price(class="form-control", type="number", step="500") }}
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        {% if not product %}
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Boshlang'ich qoldiq</label>
+                            {{ form.stock_quantity(class="form-control", type="number") }}
+                        </div>
+                        {% endif %}
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">O'lchov birligi</label>
+                            {{ form.unit(class="form-select") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Minimal ogohlantirish qoldig'i</label>
+                            {{ form.min_stock_alert(class="form-control", type="number") }}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold">Yaroqlilik muddati (agar mavjud bo'lsa)</label>
+                        {{ form.expiry_date(class="form-control", type="date") }}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-check me-1"></i> Saqlash
+                        </button>
+                        <a href="{{ url_for('inventory.index') }}" class="btn btn-outline-secondary">Bekor qilish</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

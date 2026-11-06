@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}Ombor & Mahsulotlar{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1" style="color: #255F38;"><i class="fa-solid fa-boxes-stacked me-2"></i> Ombor & Mahsulotlar</h4>
+        <p class="text-muted small mb-0">Sport oziq-ovqatlari va ichimliklar qoldig'i, kirim va hisobdan chiqarish</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('inventory.income') }}" class="btn btn-success btn-sm">
+            <i class="fa-solid fa-cart-flatbed me-1"></i> Omborga kirim
+        </a>
+        <a href="{{ url_for('inventory.add') }}" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-plus me-1"></i> Yangi mahsulot qo'shish
+        </a>
+        <a href="{{ url_for('inventory.movements') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-list me-1"></i> Harakatlar jurnali
+        </a>
+    </div>
+</div>
+
+<!-- FILTRLAR -->
+<div class="card mb-4">
+    <div class="card-body p-3">
+        <form method="GET" action="{{ url_for('inventory.index') }}" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Mahsulot nomi yoki shtrix-kodi..." value="{{ search }}">
+            </div>
+            <div class="col-md-3">
+                <select name="category_id" class="form-select form-select-sm">
+                    <option value="">Barcha kategoriyalar</option>
+                    {% for c in categories %}
+                    <option value="{{ c.id }}" {% if selected_category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="low_stock" class="form-select form-select-sm">
+                    <option value="">Barcha qoldiqlar</option>
+                    <option value="1" {% if low_stock == '1' %}selected{% endif %}>Faqat kam qolganlar</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary flex-grow-1">Filtrlash</button>
+                <a href="{{ url_for('inventory.index') }}" class="btn btn-sm btn-outline-secondary">Tozalash</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MAHSULOTLAR JADVALI -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Mahsulot nomi</th>
+                        <th>Shtrix-kod</th>
+                        <th>Kategoriya</th>
+                        <th>Keltirilgan narx</th>
+                        <th>Sotish narxi</th>
+                        <th>Qoldiq</th>
+                        <th>Holati</th>
+                        <th class="text-end">Amallar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in products %}
+                    <tr>
+                        <td>{{ p.id }}</td>
+                        <td>
+                            <b>{{ p.name }}</b>
+                            {% if p.expiry_date %}
+                            <div class="text-muted small">Muddati: {{ p.expiry_date.strftime('%d.%m.%Y') }}</div>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-light text-dark font-monospace border">{{ p.barcode }}</span></td>
+                        <td><small>{{ p.category.name if p.category else '-' }}</small></td>
+                        <td><small class="text-muted">{{ p.formatted_purchase_price }}</small></td>
+                        <td><b class="text-success">{{ p.formatted_sale_price }}</b></td>
+                        <td>
+                            <b class="fs-6">{{ p.stock_quantity }}</b> <small class="text-muted">{{ p.unit }}</small>
+                        </td>
+                        <td>
+                            {% if p.stock_quantity <= 0 %}
+                            <span class="badge bg-danger">Tugagan</span>
+                            {% elif p.is_low_stock %}
+                            <span class="badge bg-warning text-dark">Minimal qoldiq</span>
+                            {% else %}
+                            <span class="badge bg-success">Yetarli</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('inventory.edit', id=p.id) }}" class="btn btn-outline-warning" title="Tahrirlash">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#writeOffModal{{ p.id }}" title="Hisobdan chiqarish">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#adjustModal{{ p.id }}" title="Inventarizatsiya">
+                                    <i class="fa-solid fa-sliders"></i>
+                                </button>
+                            </div>
+
+                            <!-- WRITE OFF MODAL -->
+                            <div class="modal fade text-start" id="writeOffModal{{ p.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <form method="POST" action="{{ url_for('inventory.write_off') }}">
+                                            <input type="hidden" name="product_id" value="{{ p.id }}">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title text-danger"><i class="fa-solid fa-trash-can me-2"></i> Hisobdan Chiqarish (Spisanie)</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Mahsulot: <b>{{ p.name }}</b> (Mavjud qoldiq: {{ p.stock_quantity }} {{ p.unit }})</p>
+                                                <div class="mb-3">
+                                                    <label class="form-label small fw-semibold">Chiqariladigan miqdor</label>
+                                                    <input type="number" name="quantity" class="form-control" required min="1" max="{{ p.stock_quantity }}" value="1">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label small fw-semibold">Sabab</label>
+                                                    <input type="text" name="reason" class="form-control" required placeholder="Masalan: Yaroqlilik muddati o'tgan, idishi shikastlangan">
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Bekor qilish</button>
+                                                <button type="submit" class="btn btn-danger btn-sm fw-bold">Hisobdan chiqarish</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ADJUST MODAL -->
+                            <div class="modal fade text-start" id="adjustModal{{ p.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <form method="POST" action="{{ url_for('inventory.adjust') }}">
+                                            <input type="hidden" name="product_id" value="{{ p.id }}">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title text-secondary"><i class="fa-solid fa-sliders me-2"></i> Inventarizatsiya Tuzatishi</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Mahsulot: <b>{{ p.name }}</b></p>
+                                                <p class="text-muted small">Tizimdagi joriy qoldiq: <b>{{ p.stock_quantity }} {{ p.unit }}</b></p>
+                                                <div class="mb-3">
+                                                    <label class="form-label small fw-semibold">Faktik (haqiqiy) qoldiq soni</label>
+                                                    <input type="number" name="actual_quantity" class="form-control" required min="0" value="{{ p.stock_quantity }}">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label small fw-semibold">Izoh</label>
+                                                    <input type="text" name="reason" class="form-control" placeholder="Inventarizatsiya natijasi">
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Bekor qilish</button>
+                                                <button type="submit" class="btn btn-primary btn-sm fw-bold">Qoldiqni to'g'rilash</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">Mahsulotlar topilmadi</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- SAHIFALASH -->
+{% if pagination.pages > 1 %}
+<nav class="mt-4">
+    <ul class="pagination pagination-sm justify-content-center">
+        {% for page in pagination.iter_pages() %}
+            {% if page %}
+                <li class="page-item {% if page == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('inventory.index', page=page, search=search, category_id=selected_category_id, low_stock=low_stock) }}">{{ page }}</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

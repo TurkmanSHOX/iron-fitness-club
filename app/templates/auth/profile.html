@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Profil va Parol{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 text-success"><i class="fa-solid fa-user-shield me-2"></i> Administrator Profili</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+                    <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 58px; height: 58px; font-size: 1.5rem;">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-1">{{ current_user.full_name }}</h5>
+                        <p class="text-muted small mb-0">Login: <b>{{ current_user.username }}</b> | Rol: <span class="badge bg-success">{{ current_user.role }}</span></p>
+                    </div>
+                </div>
+
+                <h6 class="fw-bold mb-3">Parolni o'zgartirish</h6>
+                <form method="POST" action="{{ url_for('auth.profile') }}">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Joriy parol</label>
+                        {{ form.old_password(class="form-control", placeholder="Amaldagi parolingiz") }}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Yangi parol</label>
+                        {{ form.new_password(class="form-control", placeholder="Kamida 6 ta belgi") }}
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-check me-1"></i> Parolni yangilash
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 text-success"><i class="fa-solid fa-money-bill-transfer me-2"></i> {{ title }}</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Xarajat nomi / Maqsadi <span class="text-danger">*</span></label>
+                        {{ form.title(class="form-control", placeholder="Masalan: Zal ijarasi uchun to'lov, Yangi gantellar xaridi") }}
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Xarajat kategoriyasi <span class="text-danger">*</span></label>
+                            {{ form.category(class="form-select") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Summa (so'm) <span class="text-danger">*</span></label>
+                            {{ form.amount(class="form-control", type="number", step="1000", placeholder="1000000") }}
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">To'lov usuli <span class="text-danger">*</span></label>
+                            {{ form.payment_method(class="form-select") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Sana <span class="text-danger">*</span></label>
+                            {{ form.expense_date(class="form-control", type="date") }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Chek yoki kvitansiya rasmi (ixtiyoriy)</label>
+                        {{ form.receipt_image(class="form-control") }}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold">Qo'shimcha izoh</label>
+                        {{ form.notes(class="form-control", rows="2", placeholder="Qo'shimcha tafsilotlar...") }}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-check me-1"></i> Xarajatni saqlash
+                        </button>
+                        <a href="{{ url_for('expenses.index') }}" class="btn btn-outline-secondary">Bekor qilish</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Audit & Xavfsizlik Jurnali{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1" style="color: #255F38;"><i class="fa-solid fa-shield-halved me-2"></i> Audit & Xavfsizlik Jurnali</h4>
+        <p class="text-muted small mb-0">Tizimda bajarilgan barcha muhim operatsiyalar, kirish va istisno ruxsatlari</p>
+    </div>
+    <a href="{{ url_for('settings.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-gear me-1"></i> Sozlamalarga qaytish
+    </a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Vaqt</th>
+                        <th>Harakat (Action)</th>
+                        <th>Jadval / Obyekt</th>
+                        <th>Tafsilotlar</th>
+                        <th>IP Manzil</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in logs %}
+                    <tr>
+                        <td>#{{ l.id }}</td>
+                        <td><small>{{ l.created_at.strftime('%d.%m.%Y %H:%M:%S') }}</small></td>
+                        <td>
+                            <span class="badge {% if 'OVERRIDE' in l.action or 'DELETED' in l.action %}bg-danger{% elif 'LOGIN' in l.action or 'CREATED' in l.action %}bg-success{% else %}bg-primary{% endif %} font-monospace">
+                                {{ l.action }}
+                            </span>
+                        </td>
+                        <td><small class="text-muted">{{ l.target_table or '-' }} (ID: {{ l.target_id or '-' }})</small></td>
+                        <td><small>{{ l.details or '-' }}</small></td>
+                        <td><small class="text-muted font-monospace">{{ l.ip_address or 'localhost' }}</small></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">Audit yozuvlari topilmadi</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if pagination.pages > 1 %}
+<nav class="mt-4">
+    <ul class="pagination pagination-sm justify-content-center">
+        {% for page in pagination.iter_pages() %}
+            {% if page %}
+                <li class="page-item {% if page == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('settings.audit_logs', page=page) }}">{{ page }}</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

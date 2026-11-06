@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Mijozlar Bazasi{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1" style="color: #255F38;"><i class="fa-solid fa-users me-2"></i> Mijozlar Bazasi</h4>
+        <p class="text-muted small mb-0">Sport klubining barcha ro'yxatdan o'tgan mijozlari</p>
+    </div>
+    <a href="{{ url_for('clients.add') }}" class="btn btn-primary btn-sm">
+        <i class="fa-solid fa-user-plus me-1"></i> Yangi mijoz qo'shish
+    </a>
+</div>
+
+<!-- QIDIRUV VA FILTR -->
+<div class="card mb-4">
+    <div class="card-body p-3">
+        <form method="GET" action="{{ url_for('clients.index') }}" class="row g-2 align-items-center">
+            <div class="col-md-6">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                    <input type="text" name="search" class="form-control" placeholder="Ism, telefon raqami yoki QR-kod bo'yicha qidirish..." value="{{ search }}">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Barcha faol mijozlar</option>
+                    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Faollar</option>
+                    <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Nofaollar</option>
+                    <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Arxivlanganlar</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+                    <i class="fa-solid fa-filter me-1"></i> Qidirish
+                </button>
+                <a href="{{ url_for('clients.index') }}" class="btn btn-sm btn-outline-secondary">Tozalash</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MIJOZLAR JADVALI -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Mijoz</th>
+                        <th>Telefon</th>
+                        <th>QR Kod</th>
+                        <th>Joriy Abonement</th>
+                        <th>Telegram</th>
+                        <th>Holati</th>
+                        <th class="text-end">Amallar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in clients %}
+                    <tr>
+                        <td>{{ c.id }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <img src="{{ c.photo_url if c.photo_url else 'https://ui-avatars.com/api/?name=' + c.full_name + '&background=255F38&color=fff&size=40' }}" 
+                                     class="rounded-circle border" style="width: 36px; height: 36px; object-fit: cover;" alt="Avatar">
+                                <div>
+                                    <a href="{{ url_for('clients.detail', id=c.id) }}" class="fw-bold text-decoration-none text-dark">
+                                        {{ c.full_name }}
+                                    </a>
+                                    <div class="text-muted small">Ro'yxatdan: {{ c.created_at.strftime('%d.%m.%Y') }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><b>{{ c.phone }}</b></td>
+                        <td><span class="badge bg-light text-dark border font-monospace">{{ c.qr_code }}</span></td>
+                        <td>
+                            {% set active_sub = c.active_subscription %}
+                            {% if active_sub %}
+                                <div><b>{{ active_sub.tariff.name }}</b></div>
+                                <small class="text-muted">{{ active_sub.end_date.strftime('%d.%m.%Y') }} gacha ({{ active_sub.days_left }} kun)</small>
+                            {% else %}
+                                <span class="badge bg-secondary">Abonement yo'q</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if c.telegram_user %}
+                                <span class="badge bg-success-subtle text-success"><i class="fa-brands fa-telegram me-1"></i> Ulangan</span>
+                            {% else %}
+                                <span class="badge bg-light text-muted">Ulanmagan</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {% if c.status == 'active' %}bg-success{% elif c.status == 'inactive' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                {{ 'Faol' if c.status == 'active' else ('Nofaol' if c.status == 'inactive' else 'Arxiv') }}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('clients.detail', id=c.id) }}" class="btn btn-outline-primary" title="Profil">
+                                    <i class="fa-solid fa-eye"></i>
+                                </a>
+                                <a href="{{ url_for('subscriptions.sell', client_id=c.id) }}" class="btn btn-outline-success" title="Abonement sotish">
+                                    <i class="fa-solid fa-cart-plus"></i>
+                                </a>
+                                <a href="{{ url_for('clients.download_qr', id=c.id) }}" class="btn btn-outline-secondary" title="QR kodni yuklab olish">
+                                    <i class="fa-solid fa-qrcode"></i>
+                                </a>
+                                <a href="{{ url_for('clients.edit', id=c.id) }}" class="btn btn-outline-warning" title="Tahrirlash">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">Mijozlar topilmadi</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- SAHIFALASH -->
+{% if pagination.pages > 1 %}
+<nav class="mt-4">
+    <ul class="pagination pagination-sm justify-content-center">
+        {% for page in pagination.iter_pages() %}
+            {% if page %}
+                <li class="page-item {% if page == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('clients.index', page=page, search=search, status=status_filter) }}">{{ page }}</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

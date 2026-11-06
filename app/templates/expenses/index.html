@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Xarajatlar Hisobi{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1" style="color: #255F38;"><i class="fa-solid fa-money-bill-transfer me-2"></i> Xarajatlar Hisobi</h4>
+        <p class="text-muted small mb-0">Ijara, ish haqi, kommunal va operatsion xarajatlarni boshqarish</p>
+    </div>
+    <a href="{{ url_for('expenses.add') }}" class="btn btn-primary btn-sm">
+        <i class="fa-solid fa-plus me-1"></i> Yangi xarajat qo'shish
+    </a>
+</div>
+
+<!-- FILTRLAR VA XULOSA -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-body p-3">
+                <form method="GET" action="{{ url_for('expenses.index') }}" class="row g-2 align-items-center">
+                    <div class="col-md-5">
+                        <select name="category" class="form-select form-select-sm">
+                            <option value="all" {% if category_filter == 'all' %}selected{% endif %}>Barcha kategoriyalar</option>
+                            <option value="rent" {% if category_filter == 'rent' %}selected{% endif %}>Ijara to'lovi</option>
+                            <option value="electricity" {% if category_filter == 'electricity' %}selected{% endif %}>Elektr energiyasi</option>
+                            <option value="water" {% if category_filter == 'water' %}selected{% endif %}>Suv va kommunal</option>
+                            <option value="salary" {% if category_filter == 'salary' %}selected{% endif %}>Ish haqi</option>
+                            <option value="inventory_purchase" {% if category_filter == 'inventory_purchase' %}selected{% endif %}>Mahsulotlar xaridi</option>
+                            <option value="repair" {% if category_filter == 'repair' %}selected{% endif %}>Ta'mirlash va jihozlar</option>
+                            <option value="other" {% if category_filter == 'other' %}selected{% endif %}>Boshqa xarajatlar</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="month" name="month" class="form-control form-control-sm" value="{{ month_filter }}">
+                    </div>
+                    <div class="col-md-3 d-flex gap-2">
+                        <button type="submit" class="btn btn-sm btn-primary flex-grow-1">Filtrlash</button>
+                        <a href="{{ url_for('expenses.index') }}" class="btn btn-sm btn-outline-secondary">Tozalash</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card h-100 bg-danger-subtle border-danger shadow-sm">
+            <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-danger small fw-semibold text-uppercase">Tanlangan davr xarajati</span>
+                    <h3 class="fw-bold text-danger mb-0">{{ "{:,.0f}".format(total_expense).replace(',', ' ') }} so'm</h3>
+                </div>
+                <div class="fs-1 text-danger opacity-50">
+                    <i class="fa-solid fa-receipt"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JADVAL -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Sana</th>
+                        <th>Xarajat maqsadi</th>
+                        <th>Kategoriya</th>
+                        <th>To'lov turi</th>
+                        <th>Summa</th>
+                        <th>Chek / Fayl</th>
+                        <th class="text-end">Amallar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in expenses %}
+                    <tr>
+                        <td>#{{ e.id }}</td>
+                        <td><b>{{ e.expense_date.strftime('%d.%m.%Y') }}</b></td>
+                        <td>
+                            <b>{{ e.title }}</b>
+                            {% if e.notes %}
+                            <div class="text-muted small">{{ e.notes }}</div>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-light text-dark border">{{ e.category_label }}</span></td>
+                        <td><small>{{ e.payment_method }}</small></td>
+                        <td><b class="text-danger fs-6">{{ e.formatted_amount }}</b></td>
+                        <td>
+                            {% if e.receipt_image %}
+                            <a href="/api/uploads/{{ e.receipt_image }}" target="_blank" class="btn btn-sm btn-outline-secondary py-0">
+                                <i class="fa-solid fa-paperclip"></i> Ko'rish
+                            </a>
+                            {% else %}-{% endif %}
+                        </td>
+                        <td class="text-end">
+                            <form method="POST" action="{{ url_for('expenses.delete', id=e.id) }}" class="d-inline" onsubmit="return confirm('Haqiqatan ham bu xarajatni o\'chirmoqchimisiz?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">Xarajatlar topilmadi</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if pagination.pages > 1 %}
+<nav class="mt-4">
+    <ul class="pagination pagination-sm justify-content-center">
+        {% for page in pagination.iter_pages() %}
+            {% if page %}
+                <li class="page-item {% if page == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('expenses.index', page=page, category=category_filter, month=month_filter) }}">{{ page }}</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

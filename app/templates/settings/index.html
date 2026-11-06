@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Tizim Sozlamalari & Zaxira Nusxa{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1" style="color: #255F38;"><i class="fa-solid fa-gear me-2"></i> Tizim Sozlamalari & Zaxira Nusxa</h4>
+        <p class="text-muted small mb-0">Sport klubi ma'lumotlari, biznes qoidalari, API kalitlari va zaxiralash</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('settings.audit_logs') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-shield-halved me-1"></i> Xavfsizlik & Audit jurnali
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- CHAP: ASOSIY SOZLAMALAR FORMASI -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 text-success"><i class="fa-solid fa-sliders me-2"></i> Asosiy Parametrlar & Qoidalar</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    <h6 class="fw-bold text-success border-bottom pb-2 mb-3">1. Klub ma'lumotlari</h6>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Klub nomi</label>
+                            <input type="text" name="club_name" class="form-control" value="{{ settings.club_name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Aloqa telefoni</label>
+                            <input type="text" name="club_phone" class="form-control" value="{{ settings.club_phone }}">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold">Klub manzili (Chekda aks etadi)</label>
+                        <input type="text" name="club_address" class="form-control" value="{{ settings.club_address }}">
+                    </div>
+
+                    <h6 class="fw-bold text-success border-bottom pb-2 mb-3">2. Abonement va Muzlatish siyosati</h6>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Maksimal muzlatish muddati (kun)</label>
+                            <input type="number" name="max_freeze_days" class="form-control" value="{{ settings.max_freeze_days }}" min="1" max="90">
+                            <div class="form-text small">Mijoz bir martada ko'pi bilan shuncha kunga muzlatish so'ray oladi.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Davrdagi muzlatishlar soni (limit)</label>
+                            <input type="number" name="max_freeze_per_period" class="form-control" value="{{ settings.max_freeze_per_period }}" min="1" max="10">
+                            <div class="form-text small">Bir oylik abonement davrida necha marta muzlatishga ruxsat.</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4 form-check">
+                        <input type="checkbox" name="single_entry_per_day" class="form-check-input" id="singleEntry" {% if settings.single_entry_per_day %}checked{% endif %}>
+                        <label class="form-check-label small fw-semibold" for="singleEntry">
+                            Bir kalendar kunida faqat bitta muvaffaqiyatli kirishga ruxsat berilsin (Takroriy kirish bloklanadi)
+                        </label>
+                    </div>
+
+                    <h6 class="fw-bold text-success border-bottom pb-2 mb-3">3. Telegram Bot va Onlayn To'lovlar</h6>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Telegram Bot Tokeni (@BotFather)</label>
+                        <input type="password" name="telegram_bot_token" class="form-control font-monospace" value="{{ settings.telegram_bot_token }}" placeholder="123456789:ABCDef...">
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Click Merchant ID</label>
+                            <input type="text" name="click_merchant_id" class="form-control" value="{{ settings.click_merchant_id }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Click Service ID</label>
+                            <input type="text" name="click_service_id" class="form-control" value="{{ settings.click_service_id }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Click Secret Key</label>
+                            <input type="password" name="click_secret_key" class="form-control" value="{{ settings.click_secret_key }}">
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Payme Merchant ID</label>
+                            <input type="text" name="payme_merchant_id" class="form-control" value="{{ settings.payme_merchant_id }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Payme Secret Key</label>
+                            <input type="password" name="payme_secret_key" class="form-control" value="{{ settings.payme_secret_key }}">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary fw-bold px-4">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> Sozlamalarni saqlash
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- O'NG: ZAXIRALASH VA BAZA -->
+    <div class="col-lg-4">
+        <!-- QO'LDA ZAXIRA YARATISH -->
+        <div class="card shadow-sm mb-4 border-2 border-primary">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-bold text-primary"><i class="fa-solid fa-database me-2"></i> Ma'lumotlar Bazasi Zaxirasi</h6>
+            </div>
+            <div class="card-body p-3">
+                <p class="text-muted small mb-3">
+                    Barcha mijozlar, to'lovlar, savdolar va abonementlar bazasining xavfsiz nusxasini hoziroq yarating.
+                </p>
+                <form method="POST" action="{{ url_for('settings.create_backup') }}">
+                    <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">
+                        <i class="fa-solid fa-cloud-arrow-down me-1"></i> Yangi zaxira nusxa yaratish
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ZAXIRA NUSXALAR JADVALI -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex align-items-center justify-content-between">
+                <h6 class="mb-0 fw-bold"><i class="fa-solid fa-clock-rotate-left me-1 text-muted"></i> Zaxira fayllari</h6>
+                <span class="badge bg-light text-dark">{{ backups|length }} ta</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for b in backups %}
+                    <div class="list-group-item d-flex align-items-center justify-content-between p-2">
+                        <div>
+                            <div class="small fw-bold text-truncate" style="max-width: 170px;" title="{{ b.file_name }}">{{ b.file_name }}</div>
+                            <small class="text-muted">{{ b.created_at.strftime('%d.%m.%Y %H:%M') }} ({{ b.formatted_size }})</small>
+                        </div>
+                        <a href="{{ url_for('settings.download_backup', filename=b.file_name) }}" class="btn btn-sm btn-outline-success py-1 px-2" title="Yuklab olish">
+                            <i class="fa-solid fa-download"></i>
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="p-3 text-center text-muted small">Hozircha zaxira nusxalar mavjud emas</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

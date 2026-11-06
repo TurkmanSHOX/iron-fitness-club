@@ -1,0 +1,62 @@
+# Python & Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+env/
+ENV/
+.venv/
+
+# Environment Variables
+.env
+
+# Database & Instances
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Tests & Caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Backups & Reports & Uploads
+backups/*.sql
+backups/*.gz
+backups/*.zip
+reports/*.xlsx
+reports/*.pdf
+uploads/receipts/*.pdf
+uploads/receipts/*.png
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store

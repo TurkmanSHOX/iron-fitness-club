@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 text-success"><i class="fa-solid fa-tags me-2"></i> {{ title }}</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Tarif nomi <span class="text-danger">*</span></label>
+                        {{ form.name(class="form-control", placeholder="Masalan: 1 oylik - Juft kunlar") }}
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Foydalanish turi <span class="text-danger">*</span></label>
+                            {{ form.type(class="form-select") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Amal qilish muddati (kun) <span class="text-danger">*</span></label>
+                            {{ form.duration_days(class="form-control", type="number") }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Tarif narxi (so'm) <span class="text-danger">*</span></label>
+                        {{ form.price(class="form-control", type="number", step="1000") }}
+                        <div class="form-text small">Eslatma: Narxni o'zgartirsangiz, avval sotilgan abonementlar narxi o'zgarmasdan qoladi.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Tarif tavsifi</label>
+                        {{ form.description(class="form-control", rows="3", placeholder="Tarif shartlari, vaqtlari haqida izoh...") }}
+                    </div>
+
+                    <div class="mb-4 form-check">
+                        {{ form.is_active(class="form-check-input", id="isActive") }}
+                        <label class="form-check-label small" for="isActive">Tarif faol holatda bo'lsin</label>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-check me-1"></i> Saqlash
+                        </button>
+                        <a href="{{ url_for('tariffs.index') }}" class="btn btn-outline-secondary">Bekor qilish</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
