@@ -248,6 +248,8 @@ def test_payment_webhooks(app):
         }
         res_prep = ClickHandler.handle_request(click_data_prepare)
         assert res_prep['error'] == 0
+        prep_id = res_prep.get('merchant_prepare_id')
+        assert prep_id is not None
 
         click_data_complete = {
             'click_trans_id': '1001',
@@ -256,6 +258,7 @@ def test_payment_webhooks(app):
             'amount': '20000',
             'action': 1,
             'error': 0,
+            'merchant_prepare_id': prep_id,
             'sign_time': '2026-11-06 12:00:00',
             'sign_string': ''
         }
@@ -475,3 +478,214 @@ def test_auto_unfreeze_scheduler_logic(app):
 
         sub_updated = db.session.get(Subscription, sub.id)
         assert sub_updated.status == 'active'
+
+
+# =====================================================================
+# 14. CLICK XAVFSIZLIK VA VALIDATSIYA TESTLARI
+# =====================================================================
+def test_click_security_and_validations(app):
+    with app.app_context():
+        c = Client(full_name="ClickSec", phone="+998909998877", qr_code="IFC-CLICKSEC")
+        db.session.add(c)
+        db.session.commit()
+
+        # 1. Noto'g'ri Click imzosi
+        bad_sign_data = {
+            'click_trans_id': '2001',
+            'service_id': '1',
+            'merchant_trans_id': f'client_{c.id}_tariff_1',
+            'amount': '20000',
+            'action': 0,
+            'error': 0,
+            'sign_time': '2026-11-06 12:00:00',
+            'sign_string': 'invalid_signature_test'
+        }
+        res_bad_sign = ClickHandler.handle_request(bad_sign_data)
+        assert res_bad_sign['error'] == -1
+
+        # 2. Noto'g'ri to'lov summasi (Tarif 20 000 so'm, ammo 15 000 yuborilganda)
+        bad_amt_data = {
+            'click_trans_id': '2002',
+            'service_id': '1',
+            'merchant_trans_id': f'client_{c.id}_tariff_1',
+            'amount': '15000',
+            'action': 0,
+            'error': 0,
+            'sign_time': '2026-11-06 12:00:00',
+            'sign_string': ''
+        }
+        res_bad_amt = ClickHandler.handle_request(bad_amt_data)
+        assert res_bad_amt['error'] == -2
+
+        # 3. Soxta / Mavjud bo'lmagan merchant_prepare_id bilan Complete
+        fake_prep_data = {
+            'click_trans_id': '2003',
+            'service_id': '1',
+            'merchant_trans_id': f'client_{c.id}_tariff_1',
+            'amount': '20000',
+            'action': 1,
+            'error': 0,
+            'merchant_prepare_id': '999999',
+            'sign_time': '2026-11-06 12:00:00',
+            'sign_string': ''
+        }
+        res_fake_prep = ClickHandler.handle_request(fake_prep_data)
+        assert res_fake_prep['error'] == -6
+
+        # 4. Muvaffaqiyatli Prepare va Complete sikli
+        valid_prep = {
+            'click_trans_id': '2004',
+            'service_id': '1',
+            'merchant_trans_id': f'client_{c.id}_tariff_1',
+            'amount': '20000',
+            'action': 0,
+            'error': 0,
+            'sign_time': '2026-11-06 12:00:00',
+            'sign_string': ''
+        }
+        res_valid_prep = ClickHandler.handle_request(valid_prep)
+        assert res_valid_prep['error'] == 0
+        real_prep_id = res_valid_prep['merchant_prepare_id']
+
+        valid_complete = {
+            'click_trans_id': '2004',
+            'service_id': '1',
+            'merchant_trans_id': f'client_{c.id}_tariff_1',
+            'amount': '20000',
+            'action': 1,
+            'error': 0,
+            'merchant_prepare_id': real_prep_id,
+            'sign_time': '2026-11-06 12:00:00',
+            'sign_string': ''
+        }
+        res_valid_comp = ClickHandler.handle_request(valid_complete)
+        assert res_valid_comp['error'] == 0
+        initial_sub_count = Subscription.query.filter_by(client_id=c.id).count()
+        assert initial_sub_count == 1
+
+        # 5. Takroriy Click Complete (Idempotency) - qayta abonement yaratilmasligi kerak!
+        res_dup_comp = ClickHandler.handle_request(valid_complete)
+        assert res_dup_comp['error'] == 0
+        assert res_dup_comp['error_note'] == 'Already completed'
+        dup_sub_count = Subscription.query.filter_by(client_id=c.id).count()
+        assert dup_sub_count == 1
+
+
+# =====================================================================
+# 15. PAYME XAVFSIZLIK, SUMMA VA BEKOR QILISH TESTLARI
+# =====================================================================
+def test_payme_security_and_validations(app):
+    with app.app_context():
+        c = Client(full_name="PaymeSec", phone="+998901239988", qr_code="IFC-PAYMESEC")
+        db.session.add(c)
+        db.session.commit()
+
+        # 1. Noto'g'ri Payme Basic Auth
+        res_bad_auth = PaymeHandler.handle_rpc("invalid_auth", {"method": "CheckPerformTransaction", "params": {}, "id": 1})
+        assert 'error' in res_bad_auth
+        assert res_bad_auth['error']['code'] == -32504
+
+        # 2. Noto'g'ri Payme summa (Tarif 20 000 so'm = 2 000 000 tiyin, ammo 1 500 000 yuborilganda)
+        bad_sum_payload = {
+            "method": "CheckPerformTransaction",
+            "params": {"amount": 1500000, "account": {"client_id": c.id, "tariff_id": 1}},
+            "id": 2
+        }
+        res_bad_sum = PaymeHandler.handle_rpc("Basic dGVzdDp0ZXN0", bad_sum_payload)
+        assert 'error' in res_bad_sum
+        assert res_bad_sum['error']['code'] == -31001
+
+        # 3. Mavjud bo'lmagan mijoz uchun standart ID ishlatmaslik (-31050)
+        no_client_payload = {
+            "method": "CheckPerformTransaction",
+            "params": {"amount": 2000000, "account": {"client_id": 99999, "tariff_id": 1}},
+            "id": 3
+        }
+        res_no_client = PaymeHandler.handle_rpc("Basic dGVzdDp0ZXN0", no_client_payload)
+        assert 'error' in res_no_client
+        assert res_no_client['error']['code'] == -31050
+
+        # 4. PerformTransaction muvaffaqiyatli bajarilishi
+        perf_payload = {
+            "method": "PerformTransaction",
+            "params": {"id": "payme_sec_tx_777", "amount": 2000000, "account": {"client_id": c.id, "tariff_id": 1}},
+            "id": 4
+        }
+        res_perf = PaymeHandler.handle_rpc("Basic dGVzdDp0ZXN0", perf_payload)
+        assert res_perf.get('result', {}).get('state') == 2
+        pay_id = res_perf['result']['transaction']
+
+        # 5. Takroriy Payme PerformTransaction (Idempotency)
+        res_dup_perf = PaymeHandler.handle_rpc("Basic dGVzdDp0ZXN0", perf_payload)
+        assert res_dup_perf.get('result', {}).get('state') == 2
+        assert res_dup_perf['result']['transaction'] == pay_id
+
+        # 6. CheckTransaction holati
+        check_tx_payload = {
+            "method": "CheckTransaction",
+            "params": {"id": "payme_sec_tx_777"},
+            "id": 5
+        }
+        res_chk = PaymeHandler.handle_rpc("Basic dGVzdDp0ZXN0", check_tx_payload)
+        assert res_chk.get('result', {}).get('state') == 2
+
+        # 7. CancelTransaction (Bekor qilish)
+        cancel_payload = {
+            "method": "CancelTransaction",
+            "params": {"id": "payme_sec_tx_777", "reason": 1},
+            "id": 6
+        }
+        res_cancel = PaymeHandler.handle_rpc("Basic dGVzdDp0ZXN0", cancel_payload)
+        assert res_cancel.get('result', {}).get('state') == -2
+
+        # 8. Bekor qilingan to'lovni qayta ishlatish (re-perform) taqiqlanishi (-31008)
+        res_reperform = PaymeHandler.handle_rpc("Basic dGVzdDp0ZXN0", perf_payload)
+        assert 'error' in res_reperform
+        assert res_reperform['error']['code'] == -31008
+
+
+# =====================================================================
+# 16. SECRET_KEY XAVFSIZLIGI VA PRODUCTION ENFORCEMENT TESTI
+# =====================================================================
+def test_secret_key_production_enforcement(monkeypatch):
+    from app.config import get_secret_key
+
+    # Production rejimida SECRET_KEY berilmagan bo'lsa
+    monkeypatch.setenv('FLASK_ENV', 'production')
+    monkeypatch.setenv('TESTING', 'false')
+    monkeypatch.delenv('SECRET_KEY', raising=False)
+    with pytest.raises(RuntimeError, match="SECRET_KEY .env faylida ko'rsatilmagan"):
+        get_secret_key()
+
+    # Production rejimida standart/zaif SECRET_KEY bo'lsa
+    monkeypatch.setenv('SECRET_KEY', 'iron-fitness-secret-key-2026-production')
+    with pytest.raises(RuntimeError, match="Standart yoki zaif SECRET_KEY aniqlandi"):
+        get_secret_key()
+
+    # Zaif kalit (uzunligi 32 belgidan kam)
+    monkeypatch.setenv('SECRET_KEY', 'short_insecure_key')
+    with pytest.raises(RuntimeError, match="Standart yoki zaif SECRET_KEY aniqlandi"):
+        get_secret_key()
+
+    # To'g'ri va kuchli 32+ belgili kalit muvaffaqiyatli qabul qilinishi
+    strong_key = "a_super_strong_cryptographic_random_production_secret_key_2026_xyz"
+    monkeypatch.setenv('SECRET_KEY', strong_key)
+    assert get_secret_key() == strong_key
+
+
+# =====================================================================
+# 17. MARIADB SQL QUERY VA PRODUCTIONDA NO-SQLITE FALLBACK TESTI
+# =====================================================================
+def test_mariadb_sql_query_check_and_no_sqlite_fallback(monkeypatch):
+    from app.config import get_database_uri, check_mariadb_connection
+
+    # Haqiqiy SQL ulanish bo'lmasa, check_mariadb_connection False qaytaradi
+    assert check_mariadb_connection("mysql+pymysql://invalid_usr:invalid_pwd@127.0.0.1:3306/non_existent_db") is False
+
+    # Production rejimida MariaDB serveri ulanmasa, SQLite fallback qilinmasdan RuntimeError chiqarilishi
+    monkeypatch.setenv('FLASK_ENV', 'production')
+    monkeypatch.setenv('TESTING', 'false')
+    monkeypatch.setenv('DATABASE_URL', 'mysql+pymysql://root:@127.0.0.1:3306/iron_fitness_club')
+    
+    with pytest.raises(RuntimeError, match="MariaDB ma'lumotlar bazasiga ulanib bo'lmadi"):
+        get_database_uri()
