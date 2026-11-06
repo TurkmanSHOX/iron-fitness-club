@@ -47,6 +47,10 @@ reports/*.xlsx
 reports/*.pdf
 uploads/receipts/*.pdf
 uploads/receipts/*.png
+uploads/qrcodes/*
+uploads/clients/*
+!uploads/qrcodes/.gitkeep
+!uploads/clients/.gitkeep
 
 # IDEs
 .idea/

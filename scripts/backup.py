@@ -48,6 +48,39 @@ def parse_database_url(url):
         print(f"DATABASE_URL parse xatosi: {e}")
         return None
 
+def find_mariadb_binary(binary_name):
+    """
+    MariaDB/MySQL utilitalarini (mysqldump, mariadb-dump, mysql, mariadb) qidirib topish
+    """
+    # 1. Tizim PATH dan qidirish
+    found = shutil.which(binary_name)
+    if found:
+        return found
+    
+    # Muqobil nomlar
+    alt_name = 'mariadb-dump' if binary_name == 'mysqldump' else ('mysqldump' if binary_name == 'mariadb-dump' else ('mariadb' if binary_name == 'mysql' else 'mysql'))
+    found = shutil.which(alt_name)
+    if found:
+        return found
+
+    # 2. Standart o'rnatish yo'llari
+    candidates = [
+        r"C:\Users\avemo\mariadb\bin",
+        r"C:\Program Files\MariaDB 11.4\bin",
+        r"C:\Program Files\MariaDB 10.11\bin",
+        r"C:\Program Files\MariaDB 10.6\bin",
+        r"C:\Program Files\MySQL\MySQL Server 8.0\bin",
+        r"/usr/bin",
+        r"/usr/local/bin"
+    ]
+    for c_dir in candidates:
+        for fname in [binary_name, f"{binary_name}.exe", alt_name, f"{alt_name}.exe"]:
+            target = os.path.join(c_dir, fname)
+            if os.path.isfile(target):
+                return target
+                
+    return binary_name
+
 def make_backup(backup_type='manual', compress=True):
     """
     MariaDB / MySQL ma'lumotlar bazasini zaxiralash (mysqldump).
@@ -66,8 +99,9 @@ def make_backup(backup_type='manual', compress=True):
             sql_filename = f"backup_{parsed['dbname']}_{timestamp}.sql"
             sql_filepath = os.path.join(Config.BACKUPS_FOLDER, sql_filename)
 
+            dump_bin = find_mariadb_binary('mysqldump')
             cmd = [
-                'mysqldump',
+                dump_bin,
                 f"-h{parsed['host']}",
                 f"-P{parsed['port']}",
                 f"-u{parsed['user']}",
@@ -143,6 +177,50 @@ def make_backup(backup_type='manual', compress=True):
             db.session.commit()
             print(f"[SUCCESS] Lokal SQLite zaxira nusxasi yaratildi: {backup_filename} ({file_size} bayt)")
             return True, backup_filepath
+
+def restore_backup(backup_filepath, target_db=None):
+    """
+    Zaxira nusxani (SQL yoki SQL.GZ) MariaDB ga qayta tiklash (Restore)
+    """
+    raw_db_url = os.environ.get('DATABASE_URL', '')
+    parsed = parse_database_url(raw_db_url)
+    if not parsed:
+        return False, "DATABASE_URL sozlanmagan"
+
+    dest_db = target_db or parsed['dbname']
+    temp_sql = None
+    try:
+        if backup_filepath.endswith('.gz'):
+            temp_sql = backup_filepath[:-3] + '.temp_restore.sql'
+            with gzip.open(backup_filepath, 'rb') as f_in, open(temp_sql, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+            restore_file = temp_sql
+        else:
+            restore_file = backup_filepath
+
+        mysql_bin = find_mariadb_binary('mysql')
+        cmd = [
+            mysql_bin,
+            f"-h{parsed['host']}",
+            f"-P{parsed['port']}",
+            f"-u{parsed['user']}",
+            dest_db
+        ]
+        if parsed['password']:
+            cmd.insert(4, f"-p{parsed['password']}")
+
+        with open(restore_file, 'r', encoding='utf-8') as f:
+            res = subprocess.run(cmd, stdin=f, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+
+        return True, f"Baza '{dest_db}' muvaffaqiyatli tiklandi"
+    except Exception as e:
+        return False, f"Tiklashda xatolik: {e}"
+    finally:
+        if temp_sql and os.path.exists(temp_sql):
+            try:
+                os.remove(temp_sql)
+            except Exception:
+                pass
 
 if __name__ == '__main__':
     b_type = 'manual'

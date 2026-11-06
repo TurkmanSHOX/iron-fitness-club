@@ -5,7 +5,7 @@ from werkzeug.utils import secure_filename
 from app.extensions import db
 from app.config import Config
 from app.models.client import Client, ClientQRCode
-from app.models.subscription import Subscription
+from app.models.subscription import Subscription, FreezeRequest
 from app.models.payment import Payment
 from app.models.visit import Visit
 from app.models.sale import Sale
@@ -132,7 +132,7 @@ def detail(id):
     visits = client.visits.order_by(Visit.id.desc()).limit(20).all()
     payments = client.payments.order_by(Payment.id.desc()).limit(20).all()
     sales = client.sales.order_by(Sale.id.desc()).limit(10).all()
-    freeze_requests = client.freeze_requests.order_by(client.freeze_requests.subquery().c.id.desc()).all() if hasattr(client, 'freeze_requests') else []
+    freeze_requests = client.freeze_requests.order_by(FreezeRequest.id.desc()).all() if hasattr(client, 'freeze_requests') else []
 
     return render_template(
         'clients/detail.html',

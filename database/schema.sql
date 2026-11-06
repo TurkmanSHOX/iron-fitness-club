@@ -332,7 +332,7 @@ CREATE TABLE `payments` (
     `payment_type` ENUM('subscription', 'single_visit', 'product_sale', 'other') NOT NULL,
     `amount` DECIMAL(14, 2) NOT NULL,
     `payment_method` ENUM('cash', 'card', 'click', 'payme') NOT NULL,
-    `status` ENUM('pending', 'completed', 'failed', 'refunded') NOT NULL DEFAULT 'completed',
+    `status` ENUM('pending', 'completed', 'failed', 'refunded', 'cancelled') NOT NULL DEFAULT 'completed',
     `transaction_id` VARCHAR(100) DEFAULT NULL,
     `receipt_pdf_path` VARCHAR(255) DEFAULT NULL,
     `created_by` VARCHAR(50) DEFAULT 'admin',

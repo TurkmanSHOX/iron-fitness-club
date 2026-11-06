@@ -82,41 +82,18 @@ def index():
 def create_backup():
     """Qo'lda zaxira nusxa yaratish"""
     try:
-        os.makedirs(Config.BACKUPS_FOLDER, exist_ok=True)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_filename = f"manual_backup_{timestamp}.sql"
-        backup_path = os.path.join(Config.BACKUPS_FOLDER, backup_filename)
-
-        db_uri = Config.SQLALCHEMY_DATABASE_URI
-        file_size = 0
-        if 'sqlite' in db_uri:
-            raw_path = db_uri.replace('sqlite:///', '')
-            if os.path.exists(raw_path):
-                shutil.copy2(raw_path, backup_path)
-                file_size = os.path.getsize(backup_path)
+        from scripts.backup import make_backup
+        success, res = make_backup(backup_type='manual', compress=True)
+        if success:
+            filename = os.path.basename(res)
+            AuditLog.log(
+                action='MANUAL_BACKUP_CREATED',
+                admin_id=current_user.id,
+                details=f"Zaxira nusxa yaratildi: {filename}"
+            )
+            flash(f"Zaxira nusxa '{filename}' muvaffaqiyatli yaratildi!", "success")
         else:
-            schema_path = os.path.join(Config.BASE_DIR, 'database', 'schema.sql')
-            if os.path.exists(schema_path):
-                shutil.copy2(schema_path, backup_path)
-                file_size = os.path.getsize(backup_path)
-
-        blog = BackupLog(
-            file_name=backup_filename,
-            file_size=file_size,
-            backup_type='manual',
-            status='success',
-            message=f"Administrator {current_user.username} tomonidan yaratildi"
-        )
-        db.session.add(blog)
-
-        AuditLog.log(
-            action='MANUAL_BACKUP_CREATED',
-            admin_id=current_user.id,
-            details=f"Zaxira nusxa yaratildi: {backup_filename}"
-        )
-
-        db.session.commit()
-        flash(f"Zaxira nusxa '{backup_filename}' muvaffaqiyatli yaratildi!", "success")
+            flash(f"Zaxiralashda xatolik: {res}", "danger")
     except Exception as e:
         flash(f"Zaxiralashda xatolik: {e}", "danger")
 

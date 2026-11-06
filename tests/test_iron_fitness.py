@@ -685,7 +685,12 @@ def test_mariadb_sql_query_check_and_no_sqlite_fallback(monkeypatch):
     # Production rejimida MariaDB serveri ulanmasa, SQLite fallback qilinmasdan RuntimeError chiqarilishi
     monkeypatch.setenv('FLASK_ENV', 'production')
     monkeypatch.setenv('TESTING', 'false')
-    monkeypatch.setenv('DATABASE_URL', 'mysql+pymysql://root:@127.0.0.1:3306/iron_fitness_club')
+    monkeypatch.setenv('DATABASE_URL', 'mysql+pymysql://root:@127.0.0.1:3307/iron_fitness_club')
     
     with pytest.raises(RuntimeError, match="MariaDB ma'lumotlar bazasiga ulanib bo'lmadi"):
         get_database_uri()
+
+    # Agar MariaDB ulansa, aynan shu URI qaytariladi
+    if check_mariadb_connection("mysql+pymysql://root:@127.0.0.1:3306/iron_fitness_club"):
+        monkeypatch.setenv('DATABASE_URL', 'mysql+pymysql://root:@127.0.0.1:3306/iron_fitness_club')
+        assert get_database_uri() == 'mysql+pymysql://root:@127.0.0.1:3306/iron_fitness_club'
