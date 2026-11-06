@@ -1,0 +1,36 @@
+[Unit]
+Description=IRON FITNESS CLUB Flask WSGI Production Service
+After=network.target mariadb.service
+Wants=mariadb.service
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/iron_fitness_club
+Environment="PATH=/var/www/iron_fitness_club/venv/bin"
+EnvironmentFile=/var/www/iron_fitness_club/.env
+
+# Gunicorn WSGI serveri (4 worker, async/sync worker model)
+ExecStart=/var/www/iron_fitness_club/venv/bin/gunicorn \
+    --workers 4 \
+    --threads 2 \
+    --bind 127.0.0.1:5000 \
+    --access-logfile /var/log/iron_fitness_access.log \
+    --error-logfile /var/log/iron_fitness_error.log \
+    --capture-output \
+    --log-level info \
+    wsgi:app
+
+Restart=always
+RestartSec=5
+KillSignal=SIGQUIT
+Type=notify
+NotifyAccess=all
+
+# Xavfsizlik cheklovlari
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

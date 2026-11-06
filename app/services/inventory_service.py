@@ -7,7 +7,7 @@ def add_stock_income(product_id, quantity, purchase_price=None, supplier_id=None
     """
     Omborga mahsulot kirimi (partiya xaridi).
     """
-    product = Product.query.get(product_id)
+    product = db.session.get(Product, product_id)
     if not product:
         return False, "Mahsulot topilmadi"
 
@@ -57,7 +57,7 @@ def write_off_stock(product_id, quantity, reason="Muddati o'tgan yoki yaroqsiz",
     """
     Yaroqsiz mahsulotni hisobdan chiqarish (Spisanie).
     """
-    product = Product.query.get(product_id)
+    product = db.session.get(Product, product_id)
     if not product:
         return False, "Mahsulot topilmadi"
 
@@ -101,7 +101,7 @@ def inventory_adjust_stock(product_id, actual_quantity, reason="Inventarizatsiya
     """
     Inventarizatsiya natijasida faktik qoldiqni to'g'rilash.
     """
-    product = Product.query.get(product_id)
+    product = db.session.get(Product, product_id)
     if not product:
         return False, "Mahsulot topilmadi"
 

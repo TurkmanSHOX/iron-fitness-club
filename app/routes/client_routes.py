@@ -13,7 +13,14 @@ from app.models.setting import AuditLog
 from app.forms.client_forms import ClientForm
 from app.services.pdf_service import generate_qr_code_image
 
+from werkzeug.utils import secure_filename
+
 client_bp = Blueprint('clients', __name__)
+
+ALLOWED_IMAGE_EXTS = {'png', 'jpg', 'jpeg', 'webp'}
+
+def allowed_image_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTS
 
 @client_bp.route('/')
 @login_required
@@ -64,7 +71,11 @@ def add():
         photo_filename = None
         if form.photo.data:
             f = form.photo.data
-            ext = f.filename.rsplit('.', 1)[1].lower()
+            if not allowed_image_file(f.filename):
+                flash("Noto'g'ri fayl formati! Faqat rasm (png, jpg, jpeg, webp) fayllari ruxsat etiladi.", "danger")
+                return render_template('clients/form.html', form=form, title="Yangi mijoz qo'shish")
+            sec_name = secure_filename(f.filename)
+            ext = sec_name.rsplit('.', 1)[1].lower() if '.' in sec_name else 'jpg'
             photo_filename = f"client_{clean_phone}.{ext}"
             os.makedirs(os.path.join(Config.UPLOAD_FOLDER, 'clients'), exist_ok=True)
             f.save(os.path.join(Config.UPLOAD_FOLDER, 'clients', photo_filename))
@@ -155,7 +166,11 @@ def edit(id):
 
         if form.photo.data:
             f = form.photo.data
-            ext = f.filename.rsplit('.', 1)[1].lower()
+            if not allowed_image_file(f.filename):
+                flash("Noto'g'ri fayl formati! Faqat rasm (png, jpg, jpeg, webp) fayllari ruxsat etiladi.", "danger")
+                return render_template('clients/form.html', form=form, title="Mijozni tahrirlash", client=client)
+            sec_name = secure_filename(f.filename)
+            ext = sec_name.rsplit('.', 1)[1].lower() if '.' in sec_name else 'jpg'
             photo_filename = f"client_{clean_phone}.{ext}"
             os.makedirs(os.path.join(Config.UPLOAD_FOLDER, 'clients'), exist_ok=True)
             f.save(os.path.join(Config.UPLOAD_FOLDER, 'clients', photo_filename))

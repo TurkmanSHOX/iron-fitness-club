@@ -24,7 +24,7 @@ def check_in_client(qr_token_or_client_id, scan_type='qr', admin_id=None, overri
     # 1. Mijozni aniqlash
     client = None
     if isinstance(qr_token_or_client_id, int) or (isinstance(qr_token_or_client_id, str) and qr_token_or_client_id.isdigit()):
-        client = Client.query.get(int(qr_token_or_client_id))
+        client = db.session.get(Client, int(qr_token_or_client_id))
     else:
         # QR token orqali qidirish
         token = str(qr_token_or_client_id).strip()

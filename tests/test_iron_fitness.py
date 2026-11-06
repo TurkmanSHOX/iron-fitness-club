@@ -302,3 +302,176 @@ def test_pdf_and_excel_generation(tmp_path):
     )
     assert os.path.exists(excel_path)
     assert os.path.getsize(excel_path) > 0
+
+
+# =====================================================================
+# 9. XAVFSIZLIK: LOGIN RATE-LIMITING VA BLOKLASH TESTI
+# =====================================================================
+def test_login_rate_limiting_and_lockout(app, client_app):
+    with app.app_context():
+        admin = Admin.query.filter_by(username='admin').first()
+        admin.reset_failed_attempts()
+        admin.is_password_changed = True
+        db.session.commit()
+
+    # 4 ta ketma-ket xato parol yuborish
+    for i in range(4):
+        res = client_app.post('/login', data={'username': 'admin', 'password': 'wrongpassword'}, follow_redirects=True)
+        assert res.status_code == 200
+        assert b"Login yoki parol" in res.data
+
+    # 5-xato urinish hisobni 15 daqiqaga bloklashi kerak
+    res5 = client_app.post('/login', data={'username': 'admin', 'password': 'wrongpassword'}, follow_redirects=True)
+    assert res5.status_code == 200
+    assert "bloklandi" in res5.data.decode('utf-8')
+
+    with app.app_context():
+        admin = Admin.query.filter_by(username='admin').first()
+        assert admin.is_locked is True
+
+    # Bloklangan paytda to'g'ri parol kiritilsa ham kirish rad etilishi kerak
+    res_blocked = client_app.post('/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+    assert res_blocked.status_code == 200
+    assert "vaqtincha bloklangan" in res_blocked.data.decode('utf-8')
+
+
+# =====================================================================
+# 10. XAVFSIZLIK: DASTLABKI PAROLNI MAJBURIY ALMASHTIRISH TESTI
+# =====================================================================
+def test_mandatory_password_change_redirection(app, client_app):
+    with app.app_context():
+        admin = Admin.query.filter_by(username='admin').first()
+        admin.reset_failed_attempts()
+        admin.is_password_changed = False  # Parol hali almashtirilmagan
+        db.session.commit()
+
+    # Admin tizimga kirdi
+    login_res = client_app.post('/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+    assert login_res.status_code == 200
+    # Avtomatik /profile ga yo'naltirishi kerak
+    assert b"parolingizni darhol yangisiga almashtiring" in login_res.data or b"Parolni o" in login_res.data
+
+    # Boshqa bo'limga (masalan /clients) o'tishga uringanda ham profil sahifasiga qaytarishi shart!
+    clients_res = client_app.get('/clients/', follow_redirects=True)
+    assert "parolingizni yangisiga almashtirishingiz shart" in clients_res.data.decode('utf-8')
+
+    # Parolni muvaffaqiyatli almashtirish
+    change_res = client_app.post('/profile', data={
+        'old_password': 'admin123',
+        'new_password': 'SuperNewSecurePass2026!',
+        'confirm_password': 'SuperNewSecurePass2026!'
+    }, follow_redirects=True)
+    assert change_res.status_code == 200
+    assert "muvaffaqiyatli yangilandi" in change_res.data.decode('utf-8')
+
+    with app.app_context():
+        admin = Admin.query.filter_by(username='admin').first()
+        assert admin.is_password_changed is True
+        assert admin.check_password('SuperNewSecurePass2026!') is True
+
+    # Endi boshqa sahifalarga bemalol kirishi mumkin
+    clients_after = client_app.get('/clients/')
+    assert clients_after.status_code == 200
+
+
+# =====================================================================
+# 11. PAYME: CANCELTRANSACTION VA TAKRORIY SO'ROV (IDEMPOTENCY) TESTI
+# =====================================================================
+def test_payme_full_cycle_and_cancel(app):
+    with app.app_context():
+        c = Client(full_name="Paymebek", phone="+998991234567", qr_code="IFC-PAYME-CYCLE")
+        db.session.add(c)
+        db.session.commit()
+
+        # 1. CheckPerformTransaction
+        check_payload = {
+            "method": "CheckPerformTransaction",
+            "params": {"amount": 2000000, "account": {"client_id": c.id, "tariff_id": 1}},
+            "id": 123
+        }
+        res_chk = PaymeHandler.handle_rpc("Basic dGVzdDp0ZXN0", check_payload)
+        assert res_chk.get('result', {}).get('allow') is True
+
+        # 2. PerformTransaction
+        perform_payload = {
+            "method": "PerformTransaction",
+            "params": {"id": "paycom_trans_999", "amount": 2000000, "account": {"client_id": c.id, "tariff_id": 1}},
+            "id": 124
+        }
+        res_perf = PaymeHandler.handle_rpc("Basic dGVzdDp0ZXN0", perform_payload)
+        assert res_perf.get('result', {}).get('state') == 2
+        pay_id = res_perf['result']['transaction']
+
+        # 3. Takroriy PerformTransaction (Idempotency) - yangi to'lov yaratmasligi kerak
+        res_dup = PaymeHandler.handle_rpc("Basic dGVzdDp0ZXN0", perform_payload)
+        assert res_dup.get('result', {}).get('state') == 2
+        assert res_dup['result']['transaction'] == pay_id
+
+        # 4. CancelTransaction
+        cancel_payload = {
+            "method": "CancelTransaction",
+            "params": {"id": "paycom_trans_999", "reason": 1},
+            "id": 125
+        }
+        res_cancel = PaymeHandler.handle_rpc("Basic dGVzdDp0ZXN0", cancel_payload)
+        assert res_cancel.get('result', {}).get('state') == -2
+
+        # Baza holatini tekshirish
+        pay = db.session.get(Payment, int(pay_id))
+        assert pay.status == 'cancelled'
+        if pay.subscription:
+            assert pay.subscription.status == 'cancelled'
+
+
+# =====================================================================
+# 12. POS: YETARLI BO'LMAGAN OMBOR QOLDIG'IDA SAVDONI RAD ETISH
+# =====================================================================
+def test_pos_insufficient_stock_prevents_sale(app):
+    with app.app_context():
+        product = Product.query.filter_by(barcode='4600682012345').first()  # Flash Up 30 dona
+        assert product is not None
+        initial_stock = product.stock_quantity
+
+        # Ombordagidan (30) ko'p (50 dona) so'rash
+        excess_items = [{'product_id': product.id, 'quantity': initial_stock + 20}]
+        success, msg = process_pos_checkout(excess_items, payment_method='cash')
+        assert success is False
+        assert "yetarli qoldiq yo'q" in msg
+
+        # Qoldiq zarracha ham o'zgarmasligi kerak
+        prod_check = db.session.get(Product, product.id)
+        assert prod_check.stock_quantity == initial_stock
+
+
+# =====================================================================
+# 13. REJALASHTIRUVCHI (SCHEDULER): AVTOMATIK MUZLATISHDAN CHIQARISH
+# =====================================================================
+def test_auto_unfreeze_scheduler_logic(app):
+    with app.app_context():
+        admin = Admin.query.first()
+        tariff = Tariff.query.filter_by(type='daily').first()
+
+        c = Client(full_name="Schedulerbek", phone="+998941112233", qr_code="IFC-SCHED1", status="active")
+        db.session.add(c)
+        db.session.commit()
+
+        sub = create_subscription(client_id=c.id, tariff_id=tariff.id, start_date=date.today() - timedelta(days=5))
+        # Kecha tugagan muzlatish
+        req = FreezeRequest(
+            subscription_id=sub.id,
+            client_id=c.id,
+            start_date=date.today() - timedelta(days=4),
+            end_date=date.today() - timedelta(days=1),
+            days_count=3,
+            status='approved'
+        )
+        sub.status = 'frozen'
+        db.session.add(req)
+        db.session.commit()
+
+        # Auto-unfreeze funksiyasini chaqirish
+        unfrozen = auto_unfreeze_expired_subscriptions()
+        assert unfrozen >= 1
+
+        sub_updated = db.session.get(Subscription, sub.id)
+        assert sub_updated.status == 'active'

@@ -329,9 +329,13 @@
         checkoutBtn.disabled = true;
         checkoutBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> To'lov bajarilmoqda...`;
 
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         fetch("{{ url_for('pos.checkout_api') }}", {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
             body: JSON.stringify({
                 items: cart.map(i => ({ product_id: i.id, quantity: i.qty })),
                 payment_method: paymentMethod,

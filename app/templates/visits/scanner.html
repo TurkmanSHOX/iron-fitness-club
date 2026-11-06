@@ -196,10 +196,12 @@
         if (!code) return;
         lastScannedCode = code;
 
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         fetch("{{ url_for('visits.checkin_api') }}", {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
             },
             body: JSON.stringify({
                 qr_code: code,

@@ -1,15 +1,18 @@
 import os
 import socket
+import logging
 from datetime import timedelta
 from dotenv import load_dotenv
 
 BASE_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
-def _check_db_connection(uri):
+logger = logging.getLogger("IronFitnessConfig")
+
+def check_mariadb_connection(uri):
     """MariaDB/MySQL serveri ishlayotganini tezkor tekshirish"""
     if not uri or 'mysql' not in uri:
-        return uri
+        return False
     try:
         # Host va portni ajratib olish: mysql+pymysql://user:pass@host:port/dbname
         host_port = uri.split('@')[1].split('/')[0]
@@ -20,26 +23,66 @@ def _check_db_connection(uri):
             host = host_port
             port = 3306
 
-        with socket.create_connection((host, port), timeout=0.8):
-            return uri
+        with socket.create_connection((host, port), timeout=1.0):
+            return True
     except Exception:
-        # MariaDB ulanmasa lokal SQLite ga fallback
-        return None
+        return False
+
+def get_database_uri():
+    """
+    MariaDB asosiy baza sifatida o'rnatiladi.
+    Production rejimida MariaDB ishlamasa, dastur ishga tushishni qat'iy rad etadi.
+    """
+    raw_db_url = os.environ.get('DATABASE_URL', '')
+    env_mode = os.environ.get('FLASK_ENV', os.environ.get('ENVIRONMENT', 'development')).lower()
+    is_prod = env_mode in ['production', 'prod']
+    is_testing = os.environ.get('TESTING', 'false').lower() == 'true'
+
+    if is_testing:
+        return 'sqlite:///:memory:'
+
+    if 'mysql' in raw_db_url:
+        if check_mariadb_connection(raw_db_url):
+            return raw_db_url
+        else:
+            if is_prod:
+                raise RuntimeError(
+                    "\n====================================================================\n"
+                    "FATAL ERROR: MariaDB ma'lumotlar bazasiga ulanib bo'lmadi!\n"
+                    "Talab: Ishlab chiqarish (Production) rejimida MariaDB serveri\n"
+                    "(localhost:3306) ishlab turishi SHART. SQLite bazasidan foydalanish\n"
+                    "qat'iyan taqiqlangan.\n\n"
+                    "Iltimos, quyidagilarni bajaring:\n"
+                    "1. MariaDB/MySQL xizmati ishga tushirilganligini tekshiring (mysqld / service mariadb start)\n"
+                    "2. .env faylidagi DATABASE_URL parametrini to'g'ri sozlang (mysql+pymysql://user:pass@localhost:3306/iron_fitness_club)\n"
+                    "====================================================================\n"
+                )
+            else:
+                logger.warning(
+                    "[DIQQAT] MariaDB serveri (localhost:3306) ulanmadi! "
+                    "Dastur faqat lokal ishlab chiqish (Development) rejimida bo'lgani uchun "
+                    "vaqtinchalik SQLite rejimida ishlayapti. MariaDB ni ishga tushiring."
+                )
+                db_path = os.path.join(BASE_DIR, 'instance', 'iron_fitness.db')
+                return f"sqlite:///{db_path}"
+
+    if is_prod:
+        raise RuntimeError(
+            "\n====================================================================\n"
+            "FATAL ERROR: DATABASE_URL sozlanmagan yoki MariaDB manzili ko'rsatilmagan!\n"
+            "Production rejimida MariaDB bo'lishi shart.\n"
+            "====================================================================\n"
+        )
+
+    db_path = os.path.join(BASE_DIR, 'instance', 'iron_fitness.db')
+    return f"sqlite:///{db_path}"
 
 class Config:
     """IRON FITNESS CLUB - Asosiy tizim konfiguratsiyasi"""
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'iron-fitness-dev-key-change-in-prod-2026')
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'iron-fitness-secret-key-2026-production')
     
-    # Ma'lumotlar bazasi: MariaDB (HeidiSQL)
-    _raw_db_url = os.environ.get('DATABASE_URL')
-    _active_db_url = _check_db_connection(_raw_db_url)
-    
-    if _active_db_url:
-        SQLALCHEMY_DATABASE_URI = _active_db_url
-    else:
-        db_path = os.path.join(BASE_DIR, 'instance', 'iron_fitness.db')
-        SQLALCHEMY_DATABASE_URI = f"sqlite:///{db_path}"
-        
+    # Ma'lumotlar bazasi: MariaDB (HeidiSQL mos)
+    SQLALCHEMY_DATABASE_URI = get_database_uri()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_recycle': 280,
@@ -49,11 +92,15 @@ class Config:
     # Vaqt mintaqasi
     TIMEZONE = os.environ.get('TIMEZONE', 'Asia/Tashkent')
 
+    # CSRF himoyasi
+    WTF_CSRF_ENABLED = True
+    WTF_CSRF_TIME_LIMIT = 86400  # 24 soat
+
     # Sessiya xavfsizligi
     PERMANENT_SESSION_LIFETIME = timedelta(hours=14)
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
-    SESSION_COOKIE_SECURE = False  # HTTPS serverda True qilinadi
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
 
     # Fayl yuklash kataloglari
     UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')

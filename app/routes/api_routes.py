@@ -1,11 +1,13 @@
 import os
 from flask import Blueprint, request, jsonify, send_from_directory, current_app
 from app.config import Config
+from app.extensions import csrf
 from app.services.payment_service import ClickHandler, PaymeHandler
 
 api_bp = Blueprint('api', __name__)
 
 @api_bp.route('/click/prepare', methods=['POST'])
+@csrf.exempt
 def click_prepare():
     """Click Prepare Webhook"""
     data = request.form.to_dict()
@@ -14,6 +16,7 @@ def click_prepare():
 
 
 @api_bp.route('/click/complete', methods=['POST'])
+@csrf.exempt
 def click_complete():
     """Click Complete Webhook"""
     data = request.form.to_dict()
@@ -22,6 +25,7 @@ def click_complete():
 
 
 @api_bp.route('/payme', methods=['POST'])
+@csrf.exempt
 def payme_webhook():
     """Payme JSON-RPC Webhook"""
     auth_header = request.headers.get('Authorization', '')

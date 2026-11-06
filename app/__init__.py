@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template
 from app.config import Config
-from app.extensions import db, login_manager, scheduler
+from app.extensions import db, login_manager, csrf, scheduler
 from app.models.admin import Admin
 from app.models.setting import Setting
 from app.models.tariff import Tariff
@@ -19,12 +19,13 @@ def create_app(config_class=Config):
 
     # Kengaytmalarni ulash
     db.init_app(app)
+    csrf.init_app(app)
     login_manager.init_app(app)
 
     # User loader
     @login_manager.user_loader
     def load_user(user_id):
-        return Admin.query.get(int(user_id))
+        return db.session.get(Admin, int(user_id))
 
     # Blueprintlarni ro'yxatdan o'tkazish
     from app.routes.auth_routes import auth_bp
@@ -113,7 +114,8 @@ def _init_seed_data():
             full_name='Bosh Administrator',
             phone='+998901234567',
             role='admin',
-            is_active=True
+            is_active=True,
+            is_password_changed=False
         )
         default_admin.set_password('admin123')
         db.session.add(default_admin)

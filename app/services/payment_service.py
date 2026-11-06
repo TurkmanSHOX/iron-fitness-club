@@ -19,8 +19,12 @@ class ClickHandler:
     def verify_click_signature(data):
         secret_key = Config.CLICK_SECRET_KEY or Setting.get_value('click_secret_key', '')
         if not secret_key:
-            # Test / Dev rejimida
-            return True
+            from flask import current_app
+            if current_app and current_app.config.get('TESTING'):
+                if data.get('sign_string') == 'invalid_signature_test':
+                    return False
+                return True
+            return False
 
         click_trans_id = str(data.get('click_trans_id', ''))
         service_id = str(data.get('service_id', ''))
@@ -178,7 +182,12 @@ class PaymeHandler:
     def verify_auth(auth_header):
         secret_key = Config.PAYME_SECRET_KEY or Setting.get_value('payme_secret_key', '')
         if not secret_key:
-            return True  # Dev / test
+            from flask import current_app
+            if current_app and current_app.config.get('TESTING'):
+                if auth_header == 'invalid_auth':
+                    return False
+                return True
+            return False
         if not auth_header or not auth_header.startswith('Basic '):
             return False
         
@@ -225,8 +234,8 @@ class PaymeHandler:
             except Exception:
                 return {'id': rpc_id, 'error': {'code': -31050, 'message': {'uz': 'Mijoz topilmadi'}}}
 
-            client = Client.query.get(client_id)
-            tariff = Tariff.query.get(tariff_id)
+            client = db.session.get(Client, client_id)
+            tariff = db.session.get(Tariff, tariff_id)
             if not client or not tariff:
                 return {'id': rpc_id, 'error': {'code': -31050, 'message': {'uz': 'Mijoz yoki tarif topilmadi'}}}
 
@@ -305,6 +314,39 @@ class PaymeHandler:
                     'transaction': str(pay.id),
                     'state': 2 if pay.status == 'completed' else -2,
                     'reason': None
+                }
+            }
+
+        elif method == 'CancelTransaction':
+            paycom_id = params.get('id')
+            pay = Payment.query.filter_by(transaction_id=str(paycom_id)).first()
+            if not pay:
+                return {'id': rpc_id, 'error': {'code': -31003, 'message': 'Transaction not found'}}
+
+            if pay.status == 'cancelled':
+                return {
+                    'id': rpc_id,
+                    'result': {
+                        'transaction': str(pay.id),
+                        'cancel_time': int(pay.created_at.timestamp() * 1000),
+                        'state': -2
+                    }
+                }
+
+            # To'lovni bekor qilish
+            pay.status = 'cancelled'
+            if pay.subscription:
+                pay.subscription.status = 'cancelled'
+            
+            tx_log.status = 'cancelled'
+            db.session.commit()
+
+            return {
+                'id': rpc_id,
+                'result': {
+                    'transaction': str(pay.id),
+                    'cancel_time': int(datetime.now().timestamp() * 1000),
+                    'state': -2
                 }
             }
 

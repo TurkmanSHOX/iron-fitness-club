@@ -94,22 +94,28 @@ copy .env.example .env
    DATABASE_URL=mysql+pymysql://root:parol@localhost:3306/iron_fitness_club?charset=utf8mb4
    ```
 
-*(Eslatma: Agar kompyuteringizda hozircha MariaDB o‘rnatilmagan bo‘lsa, tizim avtomatik ravishda `instance/iron_fitness.db` bilan to‘liq ishlayveradi).*
+> [!IMPORTANT]
+> **MariaDB majburiy:** Ishlab chiqarish (Production) rejimida MariaDB serveri ishlab turishi qat'iy talab etiladi. Agar MariaDB serveri o'chiq bo'lsa, tizim xavfsizlik va ma'lumotlar yaxlitligi sababli ishga tushishni rad etadi. Lokal dasturlash (Development) rejimida esa vaqtinchalik SQLite yordam berishi mumkin.
 
 ### 4. Serverni ishga tushirish
 
-Windows uchun:
+**Windows uchun (Production WSGI - Waitress):**
 ```cmd
 run.bat
 ```
-Yoki terminalda:
+Yoki bevosita WSGI orqali:
+```bash
+python wsgi.py
+```
+Dasturlash (Development) rejimida:
 ```bash
 python run.py
 ```
+
 Brauzerda oching: **`http://127.0.0.1:5000`**
 
-- **Standart login:** `admin`
-- **Standart parol:** `admin123`
+- **Dastlabki kirish:** Tizim xavfsizlik talablariga muvofiq, dastlabki kirishda administrator parolini yangisiga majburiy almashtirish mexanizmi joriy etilgan. Yangi murakkab parol o'rnatilmaguncha boshqa sahifalarga kirish cheklanadi.
+- **Brute-force himoyasi:** 5 ta ketma-ket muvaffaqiyatsiz urinishdan so'ng hisob 15 daqiqaga avtomatik bloklanadi.
 
 ---
 
@@ -128,23 +134,52 @@ Brauzerda oching: **`http://127.0.0.1:5000`**
 
 ---
 
-## 🧪 Avtomatlashtirilgan Testlarni O‘tkazish
+## 💾 Ma'lumotlar Bazasini Zaxiralash va Tiklash
 
-Tizimdagi barcha funksiyalar va biznes qoidalar `pytest` orqali to‘liq qamrab olingan:
+Tizim MariaDB `mysqldump` va siqilgan `.sql.gz` arxivlash vositalari bilan ta'minlangan:
+
+```bash
+# 1. Zaxira nusxa olish (backups/ papkasida yaratiladi)
+python scripts/backup.py
+
+# 2. Zaxiradan ma'lumotlarni qayta tiklash
+python scripts/restore.py backups/backup_iron_fitness_club_20261106_120000.sql.gz
+```
+
+---
+
+## 🌐 Serverga Joylashtirish (Production Deployment)
+
+Linux VPS (Ubuntu / Debian) serverlari uchun to'liq konfiguratsiyalar `deploy/` katalogida taqdim etilgan:
+
+1. **Nginx Reverse Proxy:** `deploy/nginx.conf` faylini `/etc/nginx/sites-available/` katalogiga ko'chiring (SSL, HTTP/2, Gzip, Rate Limiting sozlangan).
+2. **Systemd WSGI xizmati:** `deploy/iron-fitness.service` faylini `/etc/systemd/system/` ga joylang va `systemctl enable --now iron-fitness` buyrug'ini bering.
+3. **Telegram Bot xizmati:** `deploy/iron-fitness-bot.service` yordamida botni 24/7 rejimda avtomatik qayta ishga tushuvchi daemon sifatida sozlang.
+
+---
+
+## 🧪 Avtomatlashtirilgan Testlar (100% O'tgan)
+
+Tizimdagi barcha funksiyalar va biznes qoidalar `pytest` orqali to‘liq qamrab olingan (13 ta keng qamrovli test to'plami):
 
 ```bash
 pytest tests/test_iron_fitness.py -v
 ```
 
-**Test qamrovi:**
-- `test_admin_auth`: Admin login, parollarni xavfsiz xeshlash;
-- `test_tariffs_and_client_creation`: 4 ta boshlang‘ich tarif va xavfsiz yagona QR-kod ishlab chiqarish;
-- `test_subscription_date_calculation`: Kalendar oylari va 31-yanvar $\rightarrow$ 28-fevral qoidasi;
-- `test_access_control_and_scanner`: Juft/toq kunlar, 2D skaner ruxsat va rad etishi, takroriy kirish bloklanishi va istisno ruxsati;
-- `test_freeze_request_and_extension`: Muzlatish so‘rovi, admin tasdig‘i, muddat uzaytirilishi va kirish taqiqlanishi;
-- `test_pos_and_inventory_integration`: 2D skaner POS savdosi, ombor qoldig‘ining kamayishi, manfiy qoldiqqa yo‘l qo‘yilmasligi va qaytarish (refund);
-- `test_payment_webhooks`: Click va Payme webhook imzolari, idempotency va abonement avto-faollashishi;
-- `test_pdf_and_excel_generation`: Elektron PDF kassa cheki, QR-kod rasmlari va professional Excel hisoboti.
+**Tekshirilgan testlar:**
+1. `test_admin_auth`: Admin autentifikatsiyasi va xavfsiz parollash;
+2. `test_tariffs_and_client_creation`: 4 ta boshlang‘ich tarif va yagona QR-kod generatsiyasi;
+3. `test_subscription_date_calculation`: Kalendar oylari va 31-yanvar $\rightarrow$ 28-fevral qoidasi;
+4. `test_access_control_and_scanner`: Juft/toq kunlar, 2D skaner ruxsat/rad etishi, bir kunda 1 marta kirish qoidasi va admin istisno ruxsati;
+5. `test_freeze_request_and_extension`: Muzlatish so‘rovi, admin tasdig‘i, muddat uzaytirilishi va muzlatilgan abonementga kirish taqiqlanishi;
+6. `test_pos_and_inventory_integration`: 2D skaner POS kassa savdosi, ombor qoldig‘ining atomik kamayishi va tovar qaytarish (refund);
+7. `test_payment_webhooks`: Click va Payme webhook imzolari, idempotency va abonement avto-faollashishi;
+8. `test_pdf_and_excel_generation`: Elektron PDF kassa cheki, QR-kod rasmlari va professional Excel hisoboti;
+9. `test_login_rate_limiting_and_lockout`: 5 ta xato urinishda hisob 15 daqiqaga bloklanishi;
+10. `test_mandatory_password_change_redirection`: Dastlabki parolni majburiy yangilash nazorati va sahifalarga yo'naltirish;
+11. `test_payme_full_cycle_and_cancel`: Payme CheckPerform, Perform, Idempotency va CancelTransaction to'liq sikli;
+12. `test_pos_insufficient_stock_prevents_sale`: Yetarli bo'lmagan qoldiqda savdoni rad etish va qoldiq daxlsizligi;
+13. `test_auto_unfreeze_scheduler_logic`: Muzlatish davri tugagach, avtomatik faollashish mantiqi.
 
 ---
 

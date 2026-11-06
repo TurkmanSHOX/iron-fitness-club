@@ -8,7 +8,14 @@ from app.models.expense import Expense
 from app.models.setting import AuditLog
 from app.forms.pos_forms import ExpenseForm
 
+from werkzeug.utils import secure_filename
+
 expense_bp = Blueprint('expenses', __name__)
+
+ALLOWED_RECEIPT_EXTS = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
+
+def allowed_receipt_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_RECEIPT_EXTS
 
 @expense_bp.route('/')
 @login_required
@@ -58,7 +65,11 @@ def add():
         receipt_filename = None
         if form.receipt_image.data:
             f = form.receipt_image.data
-            ext = f.filename.rsplit('.', 1)[1].lower()
+            if not allowed_receipt_file(f.filename):
+                flash("Noto'g'ri chek fayli formati! Faqat rasm (png, jpg, jpeg, webp) yoki PDF ruxsat etiladi.", "danger")
+                return render_template('expenses/form.html', form=form, title="Yangi xarajat qo'shish")
+            sec_name = secure_filename(f.filename)
+            ext = sec_name.rsplit('.', 1)[1].lower() if '.' in sec_name else 'jpg'
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
             receipt_filename = f"expense_{timestamp}.{ext}"
             os.makedirs(os.path.join(Config.UPLOAD_FOLDER, 'expenses'), exist_ok=True)

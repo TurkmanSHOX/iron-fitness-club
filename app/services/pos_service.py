@@ -150,7 +150,7 @@ def process_pos_checkout(items_data, payment_method='cash', client_id=None,
         from app.config import Config
         client_name = "Umumiy mijoz (Kassa)"
         if client_id:
-            c = Client.query.get(client_id)
+            c = db.session.get(Client, client_id)
             if c:
                 client_name = c.full_name
 

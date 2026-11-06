@@ -7,10 +7,11 @@ Ushbu qo‘llanma **IRON FITNESS CLUB** fitnes zalini avtomatlashtirish tizimida
 ## 1. Tizimga kirish
 
 1. Brauzerda tizim manzilini oching: `http://127.0.0.1:5000` (yoki server domeni).
-2. Dastlabki kirish ma’lumotlari:
+2. Dastlabki kirish:
    - **Login:** `admin`
-   - **Parol:** `admin123`
-3. Tizimga birinchi marta kirgandan so‘ng, yuqori o‘ng burchakdagi profil menyusidan **«Parolni o'zgartirish»** bo‘limiga o‘tib, parolingizni o‘zingiz biladigan xavfsiz parolga yangilang.
+   - **Dastlabki xavfsizlik talabi:** Tizimga birinchi marta kirgandan so‘ng, xavfsizlik siyosati sizdan avtomatik ravishda **yangi murakkab parol** o‘rnatishni talab qiladi.
+   - Parol muvaffaqiyatli yangilangandan keyingina barcha tizim bo‘limlari to‘liq faollashadi.
+   - **Brute-force himoyasi:** Agar 5 marta ketma-ket noto‘g‘ri parol kiritilsa, hisob 15 daqiqaga vaqtincha bloklanadi.
 
 ---
 

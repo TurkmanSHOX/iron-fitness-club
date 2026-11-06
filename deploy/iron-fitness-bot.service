@@ -1,0 +1,24 @@
+[Unit]
+Description=IRON FITNESS CLUB Telegram Bot Service (aiogram 3.x)
+After=network.target iron-fitness.service
+Wants=iron-fitness.service
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/iron_fitness_club
+Environment="PATH=/var/www/iron_fitness_club/venv/bin"
+EnvironmentFile=/var/www/iron_fitness_club/.env
+
+ExecStart=/var/www/iron_fitness_club/venv/bin/python bot/bot.py
+
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/iron_fitness_bot.log
+StandardError=append:/var/log/iron_fitness_bot_err.log
+
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

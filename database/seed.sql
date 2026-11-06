@@ -5,10 +5,9 @@
 
 USE `iron_fitness_club`;
 
--- 1. ADMINISTRATOR (Standart login: admin, parol: admin123)
--- Parol Werkzeug generate_password_hash('admin123') yordamida yaratilgan
-INSERT INTO `admins` (`id`, `username`, `password_hash`, `full_name`, `phone`, `role`, `is_active`)
-VALUES (1, 'admin', 'scrypt:32768:8:1$17B2iZ1s6n2K9b8r$e1cf8d1d81aa38914ba1faee12dfb66d43e2a4a7cfcb7ff8910072049d5bfcb1056503c2714a601bb9903e1e44fdbb790d984dfab67fe6cb51b72e5050fbe7ba', 'Bosh Administrator', '+998901234567', 'admin', 1)
+-- 1. ADMINISTRATOR (Boshlang'ich vaqtinchalik ma'lumotlar; dastlabki kirishda tizim parolni almashtirishni majburiy talab qiladi)
+INSERT INTO `admins` (`id`, `username`, `password_hash`, `full_name`, `phone`, `role`, `is_active`, `is_password_changed`)
+VALUES (1, 'admin', 'scrypt:32768:8:1$17B2iZ1s6n2K9b8r$e1cf8d1d81aa38914ba1faee12dfb66d43e2a4a7cfcb7ff8910072049d5bfcb1056503c2714a601bb9903e1e44fdbb790d984dfab67fe6cb51b72e5050fbe7ba', 'Bosh Administrator', '+998901234567', 'admin', 1, 0)
 ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`);
 
 -- 2. DASTLABKI 4 TA TARIF
